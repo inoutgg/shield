@@ -13,7 +13,7 @@ import (
 	"go.inout.gg/shield/password/verification"
 	"go.inout.gg/shield/user"
 	"go.inout.gg/foundations/debug"
-	"go.inout.gg/foundations/internal/uuidv7"
+	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/foundations/sql/db/dbutil"
 )
 

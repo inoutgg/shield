@@ -15,7 +15,7 @@ import (
 	"go.inout.gg/shield/sender"
 	"go.inout.gg/shield/user"
 	"go.inout.gg/foundations/debug"
-	"go.inout.gg/foundations/internal/uuidv7"
+	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/foundations/must"
 	"go.inout.gg/foundations/random"
 )

@@ -12,7 +12,7 @@ import (
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/strategy"
 	"go.inout.gg/foundations/http/cookie"
-	"go.inout.gg/foundations/internal/uuidv7"
+	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/foundations/sql/db/dbutil"
 )
 
