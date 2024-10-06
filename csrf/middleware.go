@@ -8,18 +8,15 @@ import (
 	"net/http"
 	"slices"
 
-	httperror "go.inout.gg/foundations/http/error"
-	"go.inout.gg/foundations/http/errorhandler"
-	"go.inout.gg/foundations/http/middleware"
+	"go.inout.gg/foundations/http/httperror"
+	"go.inout.gg/foundations/http/httpmiddleware"
 )
 
 type ctxKey struct{}
 
 var kCtxKey = ctxKey{}
 
-var (
-	ErrNoChecksumSecret = errors.New("shield/csrf: checksum secret is not provided")
-)
+var ErrNoChecksumSecret = errors.New("shield/csrf: checksum secret is not provided")
 
 var (
 	DefaultFieldName  = "csrf_token"
@@ -27,14 +24,12 @@ var (
 	DefaultCookieName = "csrf_token"
 )
 
-var (
-	DefaultTokenLength = 32
-)
+var DefaultTokenLength = 32
 
 // Config is the configuration for the CSRF middleware.
 type Config struct {
-	IgnoredMethods []string                  // optional (default: [GET, HEAD, OPTIONS, TRACE])
-	ErrorHandler   errorhandler.ErrorHandler // optional (default: errorhandler.DefaultErrorHandler)
+	IgnoredMethods []string               // optional (default: [GET, HEAD, OPTIONS, TRACE])
+	ErrorHandler   httperror.ErrorHandler // optional (default: errorhandler.DefaultErrorHandler)
 
 	ChecksumSecret string
 	TokenLength    int // optional (default: 64)
@@ -47,7 +42,7 @@ type Config struct {
 }
 
 // Middleware returns a middleware that adds CSRF token to the request context.
-func Middleware(secret string, config ...func(*Config)) (middleware.MiddlewareFunc, error) {
+func Middleware(secret string, config ...func(*Config)) (httpmiddleware.MiddlewareFunc, error) {
 	cfg := Config{
 		IgnoredMethods: []string{
 			http.MethodGet,
@@ -66,7 +61,7 @@ func Middleware(secret string, config ...func(*Config)) (middleware.MiddlewareFu
 	}
 
 	if cfg.ErrorHandler == nil {
-		cfg.ErrorHandler = errorhandler.DefaultErrorHandler
+		cfg.ErrorHandler = httperror.DefaultErrorHandler
 	}
 
 	return func(next http.Handler) http.Handler {

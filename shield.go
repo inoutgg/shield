@@ -14,9 +14,9 @@ const (
 )
 
 var (
-	ErrAuthorizedUser   = errors.New("shield: authorized user access")
-	ErrUnauthorizedUser = errors.New("shield: unauthorized user access")
-	ErrUserNotFound     = errors.New("shield: user not found")
+	ErrAuthenticatedUser   = errors.New("shield: authenticated user access")
+	ErrUnauthenticatedUser = errors.New("shield: unauthenticated user access")
+	ErrUserNotFound        = errors.New("shield: user not found")
 )
 
 type User[T any] struct {
