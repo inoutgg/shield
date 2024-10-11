@@ -1,4 +1,4 @@
-package csrf
+package shieldcsrf
 
 import (
 	"net/http"
@@ -10,17 +10,19 @@ import (
 
 var checksumSecret = "really-long-and-super-protected-checksum-secret"
 
-var safeMethods = []string{http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace}
-var unsafeMethods = []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
-var testHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	tok, err := FromRequest(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+var (
+	safeMethods   = []string{http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace}
+	unsafeMethods = []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
+	testHandler   = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tok, err := FromRequest(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 
-	SetToken(w, tok)
-	_, _ = w.Write([]byte("ok"))
-})
+		SetToken(w, tok)
+		_, _ = w.Write([]byte("ok"))
+	})
+)
 
 func TestMethods(t *testing.T) {
 	mux := http.NewServeMux()

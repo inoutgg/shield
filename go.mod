@@ -3,6 +3,7 @@ module go.inout.gg/shield
 go 1.23.1
 
 require (
+	github.com/a-h/templ v0.2.747
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/go-playground/mold/v4 v4.5.0
 	github.com/go-playground/validator/v10 v10.22.0

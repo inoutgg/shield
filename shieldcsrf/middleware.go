@@ -1,6 +1,6 @@
 // Package csrf implements a CSRF protection middleware based on the double
 // submit cookie pattern.
-package csrf
+package shieldcsrf
 
 import (
 	"context"

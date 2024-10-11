@@ -1,4 +1,4 @@
-package csrf
+package shieldcsrf
 
 import (
 	"crypto/sha256"
