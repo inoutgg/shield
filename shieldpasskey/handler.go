@@ -37,7 +37,7 @@ func (h *Handler) HandleStartUserLogin(ctx context.Context, email string) error 
 	}
 
 	user := &user{row}
-	opts, sd, err := h.wa.BeginLogin(user, nil)
+	_, _, err = h.wa.BeginLogin(user, nil)
 	if err != nil {
 		return fmt.Errorf("shield/passkey: unable to initialize passkey login flow: %w", err)
 	}

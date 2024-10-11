@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	"go.inout.gg/shield"
-	 "go.inout.gg/shield/shieldstrategy"
+	"go.inout.gg/shield/shieldstrategy"
+	"go.inout.gg/shield/shieldtoken"
 )
 
 var _ shieldstrategy.Authenticator[any] = (*tokenStrategy[any])(nil)
@@ -32,7 +33,7 @@ type Token struct {
 }
 
 type Issuer[T any] interface {
-	Issue(ctx context.Context, user *shieldstrategy.User[T]) (*Token, error)
+	Issue(ctx context.Context, user *shield.User[T]) (*Token, error)
 }
 
 type tokenStrategy[T any] struct {

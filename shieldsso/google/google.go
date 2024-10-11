@@ -9,11 +9,9 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var _ sso.Provider[any] = (*provider[any])(nil)
+var _ shieldsso.Provider[any] = (*provider[any])(nil)
 
-var (
-	Issuer = "https://accounts.google.com"
-)
+var Issuer = "https://accounts.google.com"
 
 var (
 	AuthorizePath = "/sso/google"
@@ -34,7 +32,7 @@ type provider[T any] struct {
 }
 
 // NewProvider creates a new OpenID OAuth2 provider.
-func NewProvider[T any](ctx context.Context, cfg *Config) (sso.Provider[T], error) {
+func NewProvider[T any](ctx context.Context, cfg *Config) (shieldsso.Provider[T], error) {
 	oidcProvider, err := oidc.NewProvider(ctx, Issuer)
 	if err != nil {
 		return nil, err
@@ -54,7 +52,7 @@ func NewProvider[T any](ctx context.Context, cfg *Config) (sso.Provider[T], erro
 	}, nil
 }
 
-func (p *provider[T]) UserInfo(ctx context.Context, token *oauth2.Token) (sso.UserInfo[T], error) {
+func (p *provider[T]) UserInfo(ctx context.Context, token *oauth2.Token) (shieldsso.UserInfo[T], error) {
 	// TODO(roman@vanesyan.com): use userInfo.
 	_, err := p.provider.UserInfo(ctx, p.config.TokenSource(ctx, token))
 	if err != nil {

@@ -1,4 +1,4 @@
-package token
+package shieldtoken
 
 import (
 	"errors"
