@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/must"
-	"go.inout.gg/foundations/random"
+	"go.inout.gg/shield/internal/random"
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/db/driver"
 	"go.inout.gg/shield/internal/dbsqlc"

@@ -13,7 +13,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.9.0
 	go.inout.gg/conduit v0.0.0-20241011174716-52bc52d23ab9
-	go.inout.gg/foundations v0.0.0-20240922153347-0be999149d7c
+	go.inout.gg/foundations v0.0.0-20241021195437-f07677a425bd
 	golang.org/x/crypto v0.28.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/text v0.19.0
@@ -40,7 +40,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/samber/lo v1.47.0 // indirect
 	github.com/segmentio/go-camelcase v0.0.0-20160726192923-7085f1e3c734 // indirect
 	github.com/segmentio/go-snakecase v1.2.0 // indirect
 	github.com/urfave/cli/v2 v2.27.4 // indirect

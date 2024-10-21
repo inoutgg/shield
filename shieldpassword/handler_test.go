@@ -6,15 +6,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
-	"go.inout.gg/shield/db/driverpgxv5"
 	"go.inout.gg/foundations/must"
-	"go.inout.gg/foundations/sql/db/dbtest"
+	"go.inout.gg/foundations/sqldb/sqldbtest"
+	"go.inout.gg/shield/db/driverpgxv5"
+	"go.inout.gg/shield/shieldmigrate"
 )
+
+var migrator = shieldmigrate.New()
+
+func makeDB(ctx context.Context, t *testing.T) *sqldbtest.DB {
+	return sqldbtest.Must(ctx, t, sqldbtest.WithUp(func(ctx context.Context, conn *pgx.Conn) error {
+		return migrator.Up(ctx, conn, nil)
+	}))
+}
 
 func TestUserRegistration(t *testing.T) {
 	ctx := context.Background()
-	db := dbtest.Must(ctx, t)
+	db := makeDB(ctx, t)
 	logger := slog.Default()
 	config := &Config[any]{
 		PasswordHasher: DefaultPasswordHasher,
@@ -76,7 +86,7 @@ func TestUserRegistration(t *testing.T) {
 
 func TestUserLogin(t *testing.T) {
 	ctx := context.Background()
-	db := dbtest.Must(ctx, t)
+	db := makeDB(ctx, t)
 
 	t.Run("user not found", func(t *testing.T) {
 		must.Must1(db.Reset(ctx))

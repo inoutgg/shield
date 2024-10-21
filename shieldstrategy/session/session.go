@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.inout.gg/foundations/http/cookie"
-	"go.inout.gg/foundations/sql/db/dbutil"
+	"go.inout.gg/foundations/sqldb"
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/db/driver"
 	"go.inout.gg/shield/internal/dbsqlc"
@@ -111,7 +111,7 @@ func (s *sessionStrategy[T]) Authenticate(
 
 	session, err := q.FindUserSessionByID(ctx, sessionID)
 	if err != nil {
-		if dbutil.IsNotFoundError(err) {
+		if sqldb.IsNotFoundError(err) {
 			s.config.Logger.Error(
 				"No sessions found with given ID",
 				slog.String("session_id", sessionID.String()),

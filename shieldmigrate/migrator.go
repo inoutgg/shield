@@ -8,6 +8,11 @@ import (
 	"go.inout.gg/shield/internal/migrations"
 )
 
+var (
+	DefaultUpStep   = conduit.DefaultUpStep
+	DefaultDownStep = conduit.DefaultDownStep
+)
+
 // Migrator is a database migration utility to roll up and down shield's
 // migrations in order.
 type Migrator struct {

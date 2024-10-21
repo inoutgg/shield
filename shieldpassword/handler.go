@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"go.inout.gg/foundations/debug"
-	"go.inout.gg/foundations/sql/db/dbutil"
+	"go.inout.gg/foundations/sqldb"
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/db/driver"
 	"go.inout.gg/shield/internal/dbsqlc"
@@ -145,7 +145,7 @@ func (h *Handler[T]) handleUserRegistrationTx(
 		ID:    uid,
 		Email: email,
 	}); err != nil {
-		if dbutil.IsUniqueViolationError(err) {
+		if sqldb.IsUniqueViolationError(err) {
 			return uid, ErrEmailAlreadyTaken
 		}
 
@@ -185,7 +185,7 @@ func (h *Handler[T]) HandleUserLogin(
 		email,
 	)
 	if err != nil {
-		if dbutil.IsNotFoundError(err) {
+		if sqldb.IsNotFoundError(err) {
 			return nil, shield.ErrUserNotFound
 		}
 
