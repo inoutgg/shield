@@ -4,34 +4,35 @@ import (
 	"context"
 	"fmt"
 
-	"go.inout.gg/shield/db/driver"
-
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"go.inout.gg/shield/internal/dbsqlc"
 )
 
 type Handler struct {
-	wa     *webauthn.WebAuthn
-	driver driver.Driver
+	wa   *webauthn.WebAuthn
+	pool *pgxpool.Pool
 }
 
 type Config struct {
 	WebauthnConfig *webauthn.Config
 }
 
-func NewHandler(config *Config) (*Handler, error) {
-	webauthn, err := webauthn.New(config.WebauthnConfig)
+func NewHandler(pool *pgxpool.Pool, config *Config) (*Handler, error) {
+	wa, err := webauthn.New(config.WebauthnConfig)
 	if err != nil {
 		return nil, fmt.Errorf("shield/passkey: unable to initialize handler: %w", err)
 	}
 
 	return &Handler{
-		wa:     webauthn,
-		driver: nil,
+		wa,
+		pool,
 	}, nil
 }
 
 func (h *Handler) HandleStartUserLogin(ctx context.Context, email string) error {
-	row, err := h.driver.Queries().FindUserWithPasskeyCredentialByEmail(ctx, email)
+	queries := dbsqlc.New()
+	row, err := queries.FindUserWithPasskeyCredentialByEmail(ctx, h.pool, email)
 	if err != nil {
 		return fmt.Errorf("shield/passkey: failed to retrieve a user: %w", err)
 	}

@@ -1,0 +1,6 @@
+if use flake; then
+    use flake
+fi
+
+CONDUIT_DATABASE_URL="postgresql://local:local@localhost:5432/local?sslmode=disable"
+CONDUIT_MIGRATION_DIR="migrations"

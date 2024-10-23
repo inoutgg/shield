@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/must"
-	"go.inout.gg/shield/internal/random"
 	"go.inout.gg/shield"
-	"go.inout.gg/shield/db/driver"
 	"go.inout.gg/shield/internal/dbsqlc"
+	"go.inout.gg/shield/internal/random"
 	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/shield/shieldpassword"
 	"go.inout.gg/shield/shieldsender"
@@ -94,8 +94,8 @@ type PasswordResetSuccessMessagePayload struct{}
 // Check out the FormHandler for a ready to use implementation that handles
 // HTTP form requests.
 type Handler struct {
+	pool   *pgxpool.Pool
 	config *Config
-	driver driver.Driver
 	sender shieldsender.Sender
 }
 
@@ -104,25 +104,26 @@ func (h *Handler) HandlePasswordReset(
 	ctx context.Context,
 	email string,
 ) error {
+	queries := dbsqlc.New()
+
 	// Forbid authorized user access.
 	if shielduser.IsAuthenticated(ctx) {
 		return shield.ErrAuthenticatedUser
 	}
 
-	tx, err := h.driver.Begin(ctx)
+	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	q := tx.Queries()
-	user, err := q.FindUserByEmail(ctx, email)
+	user, err := queries.FindUserByEmail(ctx, tx, email)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to find user: %w", err)
 	}
 
 	tokStr := must.Must(random.SecureHexString(h.config.TokenLength))
-	tok, err := q.UpsertPasswordResetToken(ctx, dbsqlc.UpsertPasswordResetTokenParams{
+	tok, err := queries.UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
 		ID:     uuidv7.Must(),
 		Token:  tokStr,
 		UserID: user.ID,
@@ -155,23 +156,23 @@ func (h *Handler) HandlePasswordResetConfirm(
 	ctx context.Context,
 	password, tokStr string,
 ) error {
-	ph := h.config.PasswordHasher
+	queries := dbsqlc.New()
+	hasher := h.config.PasswordHasher
 
 	// NOTE: hash password upfront to avoid unnecessary database TX delay.
-	passwordHash, err := ph.Hash(password)
+	passwordHash, err := hasher.Hash(password)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to hash password: %w", err)
 	}
 
-	tx, err := h.driver.Begin(ctx)
+	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to begin transaction: %w", err)
 	}
 
 	defer tx.Rollback(ctx)
 
-	q := tx.Queries()
-	tok, err := q.FindPasswordResetToken(ctx, tokStr)
+	tok, err := queries.FindPasswordResetToken(ctx, tx, tokStr)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to find password reset token: %w", err)
 	}
@@ -179,16 +180,16 @@ func (h *Handler) HandlePasswordResetConfirm(
 		return ErrUsedPasswordResetToken
 	}
 
-	user, err := q.FindUserByID(ctx, tok.UserID)
+	user, err := queries.FindUserByID(ctx, tx, tok.UserID)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to find user: %w", err)
 	}
 
-	if err := q.MarkPasswordResetTokenAsUsed(ctx, tok.Token); err != nil {
+	if err := queries.MarkPasswordResetTokenAsUsed(ctx, tx, tok.Token); err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to mark password reset token as used: %w", err)
 	}
 
-	if err := q.UpsertPasswordCredentialByUserID(ctx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
+	if err := queries.UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
 		ID:                   tok.UserID,
 		UserCredentialKey:    user.Email,
 		UserCredentialSecret: passwordHash,
@@ -197,7 +198,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 	}
 
 	// Once password is changed, we need to expire all sessions for this user.
-	if _, err := q.ExpireAllSessionsByUserID(ctx, user.ID); err != nil {
+	if _, err := queries.ExpireAllSessionsByUserID(ctx, tx, user.ID); err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to expire sessions: %w", err)
 	}
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/http/httperror"
 	"go.inout.gg/shield"
-	"go.inout.gg/shield/db/driver"
 	"go.inout.gg/shield/shieldpassword"
 	"go.inout.gg/shield/shieldsender"
 )
@@ -73,13 +73,13 @@ type confirmForm struct {
 
 // NewFormHandler creates a new FormHandler with the given configuration.
 func NewFormHandler(
-	driver driver.Driver,
+	pool *pgxpool.Pool,
 	sender shieldsender.Sender,
 	config *FormConfig,
 ) *FormHandler {
 	handler := &Handler{
+		pool,
 		config.Config,
-		driver,
 		sender,
 	}
 

@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/http/cookie"
 	"go.inout.gg/foundations/sqldb"
 	"go.inout.gg/shield"
-	"go.inout.gg/shield/db/driver"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/shield/shieldstrategy"
@@ -24,8 +24,8 @@ var (
 )
 
 type sessionStrategy[T any] struct {
-	driver driver.Driver
 	config *Config
+	pool   *pgxpool.Pool
 }
 
 type Config struct {
@@ -39,17 +39,20 @@ type Config struct {
 //
 // The sesion authenticator uses a DB to store sessions and a cookie to
 // store the session ID.
-func New[T any](driver driver.Driver, config ...func(*Config)) shieldstrategy.Authenticator[T] {
-	cfg := &Config{
-		Logger:     slog.Default().With("module", "shield/session"),
+func New[T any](pool *pgxpool.Pool, opts ...func(*Config)) shieldstrategy.Authenticator[T] {
+	config := &Config{
 		CookieName: DefaultCookieName,
 		ExpiresIn:  DefaultExpiresIn,
 	}
-	for _, c := range config {
-		c(cfg)
+	for _, opt := range opts {
+		opt(config)
 	}
 
-	return &sessionStrategy[T]{driver, cfg}
+	if config.Logger != nil {
+		config.Logger = slog.Default()
+	}
+
+	return &sessionStrategy[T]{config, pool}
 }
 
 func (s *sessionStrategy[T]) Issue(
@@ -58,10 +61,11 @@ func (s *sessionStrategy[T]) Issue(
 	user *shield.User[T],
 ) (*shieldstrategy.Session[T], error) {
 	ctx := r.Context()
-	q := s.driver.Queries()
+	queries := dbsqlc.New()
+
 	sessionID := uuidv7.Must()
 	expiresAt := time.Now().Add(s.config.ExpiresIn)
-	_, err := q.CreateUserSession(ctx, dbsqlc.CreateUserSessionParams{
+	_, err := queries.CreateUserSession(ctx, s.pool, dbsqlc.CreateUserSessionParams{
 		ID:        sessionID,
 		UserID:    user.ID,
 		ExpiresAt: pgtype.Timestamp{Time: expiresAt, Valid: true},
@@ -89,7 +93,9 @@ func (s *sessionStrategy[T]) Authenticate(
 	w http.ResponseWriter,
 	r *http.Request,
 ) (*shieldstrategy.Session[T], error) {
+	queries := dbsqlc.New()
 	ctx := r.Context()
+
 	sessionIDStr := cookie.Get(r, s.config.CookieName)
 	if sessionIDStr == "" {
 		return nil, shield.ErrUnauthenticatedUser
@@ -101,15 +107,13 @@ func (s *sessionStrategy[T]) Authenticate(
 		return nil, shield.ErrUnauthenticatedUser
 	}
 
-	tx, err := s.driver.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shield/session: failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	q := tx.Queries()
-
-	session, err := q.FindUserSessionByID(ctx, sessionID)
+	session, err := queries.FindUserSessionByID(ctx, tx, sessionID)
 	if err != nil {
 		if sqldb.IsNotFoundError(err) {
 			s.config.Logger.Error(

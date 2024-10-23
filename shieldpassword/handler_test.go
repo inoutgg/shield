@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.inout.gg/foundations/must"
-	"go.inout.gg/shield/db/driverpgxv5"
 	"go.inout.gg/shield/internal/testutil"
 )
 
@@ -21,10 +20,9 @@ func TestUserRegistration(t *testing.T) {
 		Logger:         logger,
 	}
 	pool := db.Pool()
-	pgxDriver := driverpgxv5.New(logger, pool)
 	h := &Handler[any]{
 		config:           config,
-		driver:           pgxDriver,
+		pool:             pool,
 		PasswordVerifier: nil,
 	}
 

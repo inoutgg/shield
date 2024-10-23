@@ -7,7 +7,7 @@
   };
 
   outputs =
-    { nixpkgs, flake-utils }:
+    { nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
@@ -22,6 +22,8 @@
             gofumpt
           ];
         };
+
+        formatter = pkgs.nixfmt-rfc-style;
       }
     );
 }

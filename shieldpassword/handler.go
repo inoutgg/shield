@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/sqldb"
 	"go.inout.gg/shield"
-	"go.inout.gg/shield/db/driver"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/shield/shieldpasswordverifier"
@@ -80,7 +80,7 @@ func WithHijacker[T any](hijacker Hijacker[T]) func(*Config[T]) {
 
 type Handler[T any] struct {
 	config           *Config[T]
-	driver           driver.Driver
+	pool             *pgxpool.Pool
 	PasswordVerifier shieldpasswordverifier.PasswordVerifier
 }
 
@@ -100,7 +100,7 @@ func (h *Handler[T]) HandleUserRegistration(
 		return nil, fmt.Errorf("shield/password: failed to hash password: %w", err)
 	}
 
-	tx, err := h.driver.Begin(ctx)
+	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shield/password: failed to begin transaction: %w", err)
 	}
@@ -115,7 +115,7 @@ func (h *Handler[T]) HandleUserRegistration(
 	var payload T
 	if h.config.Hijacker != nil {
 		d("registration hijacking is enabled, trying to get payload")
-		payload, err = h.config.Hijacker.HijackUserRegisteration(ctx, uid, tx.Tx())
+		payload, err = h.config.Hijacker.HijackUserRegisteration(ctx, uid, tx)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"shield/password: failed to hijack user registration: %w",
@@ -137,11 +137,12 @@ func (h *Handler[T]) HandleUserRegistration(
 func (h *Handler[T]) handleUserRegistrationTx(
 	ctx context.Context,
 	email, passwordHash string,
-	tx driver.ExecutorTx,
+	tx pgx.Tx,
 ) (uuid.UUID, error) {
+	q := dbsqlc.New()
 	uid := uuidv7.Must()
-	q := tx.Queries()
-	if err := q.CreateUser(ctx, dbsqlc.CreateUserParams{
+
+	if err := q.CreateUser(ctx, tx, dbsqlc.CreateUserParams{
 		ID:    uid,
 		Email: email,
 	}); err != nil {
@@ -152,7 +153,7 @@ func (h *Handler[T]) handleUserRegistrationTx(
 		return uid, fmt.Errorf("shield/password: failed to register a user: %w", err)
 	}
 
-	if err := q.CreateUserPasswordCredential(ctx, dbsqlc.CreateUserPasswordCredentialParams{
+	if err := q.CreateUserPasswordCredential(ctx, tx, dbsqlc.CreateUserPasswordCredentialParams{
 		ID:                   uuidv7.Must(),
 		UserID:               uid,
 		UserCredentialKey:    email,
@@ -173,15 +174,15 @@ func (h *Handler[T]) HandleUserLogin(
 		return nil, shield.ErrAuthenticatedUser
 	}
 
-	tx, err := h.driver.Begin(ctx)
+	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shield/password: failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	q := tx.Queries()
-	user, err := q.FindUserWithPasswordCredentialByEmail(
+	user, err := dbsqlc.New().FindUserWithPasswordCredentialByEmail(
 		ctx,
+		tx,
 		email,
 	)
 	if err != nil {
@@ -202,7 +203,7 @@ func (h *Handler[T]) HandleUserLogin(
 	var payload T
 	if h.config.Hijacker != nil {
 		d("login hijacking is enabled, trying to get payload")
-		payload, err = h.config.Hijacker.HijackUserLogin(ctx, user.ID, tx.Tx())
+		payload, err = h.config.Hijacker.HijackUserLogin(ctx, user.ID, tx)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"shield/password: failed to hijack user login: %w",

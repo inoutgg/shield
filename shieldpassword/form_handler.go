@@ -8,9 +8,9 @@ import (
 	"github.com/go-playground/mold/v4/modifiers"
 	"github.com/go-playground/mold/v4/scrubbers"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/http/httperror"
 	"go.inout.gg/shield"
-	"go.inout.gg/shield/db/driver"
 )
 
 var (
@@ -62,18 +62,18 @@ func WithConfig[T any](config *Config[T]) func(*FormConfig[T]) {
 
 // FormHandler[T] is a wrapper around Handler handling HTTP form requests.
 type FormHandler[T any] struct {
-	config  *FormConfig[T]
 	handler *Handler[T]
+	config  *FormConfig[T]
 }
 
 // NewFormHandler[T] creates a new FormHandler[T] with the given configuration.
-func NewFormHandler[T any](driver driver.Driver, config *FormConfig[T]) *FormHandler[T] {
+func NewFormHandler[T any](pool *pgxpool.Pool, config *FormConfig[T]) *FormHandler[T] {
 	return &FormHandler[T]{
-		handler: &Handler[T]{
+		&Handler[T]{
 			config: config.Config,
-			driver: driver,
+			pool:   pool,
 		},
-		config: config,
+		config,
 	}
 }
 
