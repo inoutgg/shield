@@ -9,9 +9,7 @@ type PasswordHasher interface {
 	Verify(hashedPassword string, password string) (bool, error)
 }
 
-var (
-	// DefaultPasswordHasher is the default password hashing algorithm used across.
-	DefaultPasswordHasher = NewBcryptPasswordHasher(BcryptDefaultCost)
-)
+// DefaultPasswordHasher is the default password hashing algorithm used across.
+var DefaultPasswordHasher = NewBcryptPasswordHasher(BcryptDefaultCost)
 
 var d = debug.Debuglog("shield/password")

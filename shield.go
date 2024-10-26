@@ -2,6 +2,8 @@ package shield
 
 import (
 	"errors"
+	"log/slog"
+	"os"
 
 	"github.com/google/uuid"
 )
@@ -18,6 +20,8 @@ var (
 	ErrUnauthenticatedUser = errors.New("shield: unauthenticated user access")
 	ErrUserNotFound        = errors.New("shield: user not found")
 )
+
+var DefaultLogger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 type User[T any] struct {
 	// ID is the user ID.

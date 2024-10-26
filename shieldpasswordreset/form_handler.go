@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httperror"
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/shieldpassword"
@@ -29,8 +30,8 @@ type FormConfig struct {
 
 // FormHandler is a wrapper around Handler handling HTTP form requests.
 type FormHandler struct {
-	config  *FormConfig
 	handler *Handler
+	config  *FormConfig
 }
 
 // NewFormConfig creates a new FormConfig with the given configuration options.
@@ -72,18 +73,27 @@ type confirmForm struct {
 }
 
 // NewFormHandler creates a new FormHandler with the given configuration.
+//
+// If config is nil, it
 func NewFormHandler(
 	pool *pgxpool.Pool,
 	sender shieldsender.Sender,
 	config *FormConfig,
 ) *FormHandler {
-	handler := &Handler{
-		pool,
-		config.Config,
-		sender,
+	if config == nil {
+		config = NewFormConfig()
 	}
+	config.assert()
 
-	return &FormHandler{config, handler}
+	h := FormHandler{NewHandler(pool, sender, config.Config), config}
+	h.assert()
+
+	return &h
+}
+
+func (h *FormHandler) assert() {
+	debug.Assert(h.config != nil, "config must be set")
+	debug.Assert(h.handler != nil, "handler must be set")
 }
 
 func (h *FormHandler) parsePasswordResetRequestForm(

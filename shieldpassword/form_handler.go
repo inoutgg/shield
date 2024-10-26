@@ -1,6 +1,7 @@
 package shieldpassword
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/go-playground/mold/v4/scrubbers"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httperror"
 	"go.inout.gg/shield"
 )
@@ -35,29 +37,30 @@ type FormConfig[T any] struct {
 	PasswordFieldName  string // optional (default: DefaultFieldNamePassword)
 }
 
-// NewFormConfig[T] creates a new FormConfig[T] with the given configuration options.
-func NewFormConfig[T any](config ...func(*FormConfig[T])) *FormConfig[T] {
-	cfg := &FormConfig[T]{
-		FirstNameFieldName: DefaultFieldNameFirstName,
-		LastNameFieldName:  DefaultFieldNameLastName,
-		EmailFieldName:     DefaultFieldNameEmail,
-		PasswordFieldName:  DefaultFieldNamePassword,
+func (c *FormConfig[T]) defaults() {
+	c.FirstNameFieldName = cmp.Or(c.FirstNameFieldName, DefaultFieldNameEmail)
+	c.LastNameFieldName = cmp.Or(c.LastNameFieldName, DefaultFieldNameEmail)
+	c.EmailFieldName = cmp.Or(c.EmailFieldName, DefaultFieldNameEmail)
+	c.PasswordFieldName = cmp.Or(c.PasswordFieldName, DefaultFieldNameEmail)
+	if c.Config == nil {
+		c.Config = NewConfig[T]()
 	}
-
-	for _, f := range config {
-		f(cfg)
-	}
-
-	// Set defaults.
-	if cfg.Config == nil {
-		cfg.Config = NewConfig[T]()
-	}
-
-	return cfg
 }
 
-func WithConfig[T any](config *Config[T]) func(*FormConfig[T]) {
-	return func(cfg *FormConfig[T]) { cfg.Config = config }
+func (c *FormConfig[T]) assert() {
+	debug.Assert(c.Config != nil, "Config must be set")
+}
+
+// NewFormConfig[T] creates a new FormConfig[T] with the given configuration options.
+func NewFormConfig[T any](opts ...func(*FormConfig[T])) *FormConfig[T] {
+	var config FormConfig[T]
+	for _, opt := range opts {
+		opt(&config)
+	}
+
+	config.defaults()
+
+	return &config
 }
 
 // FormHandler[T] is a wrapper around Handler handling HTTP form requests.
@@ -67,14 +70,25 @@ type FormHandler[T any] struct {
 }
 
 // NewFormHandler[T] creates a new FormHandler[T] with the given configuration.
+//
+// If config is nil, the default config is used.
 func NewFormHandler[T any](pool *pgxpool.Pool, config *FormConfig[T]) *FormHandler[T] {
-	return &FormHandler[T]{
-		&Handler[T]{
-			config: config.Config,
-			pool:   pool,
-		},
+	if config == nil {
+		config = NewFormConfig[T]()
+	}
+	config.assert()
+
+	h := FormHandler[T]{
+		NewHandler(pool, config.Config),
 		config,
 	}
+	h.assert()
+
+	return &h
+}
+
+func (h *FormHandler[T]) assert() {
+	debug.Assert(h.handler != nil, "handler must be set")
 }
 
 // userRegistrationForm is the form for user login.

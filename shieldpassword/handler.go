@@ -1,6 +1,7 @@
 package shieldpassword
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
@@ -24,9 +25,20 @@ var (
 
 // Config is the configuration for the password handler.
 type Config[T any] struct {
-	Logger         *slog.Logger
-	PasswordHasher PasswordHasher
-	Hijacker       Hijacker[T]
+	Logger           *slog.Logger
+	PasswordHasher   PasswordHasher
+	PasswordVerifier shieldpasswordverifier.PasswordVerifier
+	Hijacker         Hijacker[T]
+}
+
+func (c *Config[T]) defaults() {
+	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
+	c.PasswordHasher = cmp.Or(c.PasswordHasher, DefaultPasswordHasher)
+}
+
+func (c *Config[T]) assert() {
+	debug.Assert(c.PasswordHasher != nil, "PasswordHasher must be set")
+	debug.Assert(c.Logger != nil, "Logger must be set")
 }
 
 // Hijacker also to hijack into the user registration and logging in sessions
@@ -46,32 +58,24 @@ type Hijacker[T any] interface {
 // NewConfig creates a new config.
 //
 // If no password hasher is configured, the DefaultPasswordHasher will be used.
-func NewConfig[T any](config ...func(*Config[T])) *Config[T] {
-	cfg := Config[T]{}
-
-	for _, c := range config {
-		c(&cfg)
+func NewConfig[T any](opts ...func(*Config[T])) *Config[T] {
+	config := Config[T]{}
+	for _, opt := range opts {
+		opt(&config)
 	}
 
-	if cfg.PasswordHasher == nil {
-		cfg.PasswordHasher = DefaultPasswordHasher
-	}
+	config.defaults()
+	config.assert()
 
-	debug.Assert(cfg.PasswordHasher != nil, "PasswordHasher must be set")
-
-	return &cfg
+	return &config
 }
 
 // WithPasswordHasher configures the password hasher.
 //
 // When setting a password hasher make sure to set it across all modules,
-// such as user registration, password reset and password verification.
+// i.e., user registration, password reset and password verification.
 func WithPasswordHasher[T any](hasher PasswordHasher) func(*Config[T]) {
 	return func(cfg *Config[T]) { cfg.PasswordHasher = hasher }
-}
-
-func WithLogger[T any](logger *slog.Logger) func(*Config[T]) {
-	return func(cfg *Config[T]) { cfg.Logger = logger }
 }
 
 func WithHijacker[T any](hijacker Hijacker[T]) func(*Config[T]) {
@@ -79,9 +83,24 @@ func WithHijacker[T any](hijacker Hijacker[T]) func(*Config[T]) {
 }
 
 type Handler[T any] struct {
-	config           *Config[T]
-	pool             *pgxpool.Pool
-	PasswordVerifier shieldpasswordverifier.PasswordVerifier
+	pool   *pgxpool.Pool
+	config *Config[T]
+}
+
+func NewHandler[T any](pool *pgxpool.Pool, config *Config[T]) *Handler[T] {
+	if config == nil {
+		config = NewConfig[T]()
+	}
+	config.assert()
+
+	h := Handler[T]{pool, config}
+	h.assert()
+
+	return &h
+}
+
+func (h *Handler[T]) assert() {
+	debug.Assert(h.pool != nil, "Logger must be set")
 }
 
 func (h *Handler[T]) HandleUserRegistration(
@@ -147,6 +166,7 @@ func (h *Handler[T]) handleUserRegistrationTx(
 		Email: email,
 	}); err != nil {
 		if sqldb.IsUniqueViolationError(err) {
+			d("unique error violation")
 			return uid, ErrEmailAlreadyTaken
 		}
 

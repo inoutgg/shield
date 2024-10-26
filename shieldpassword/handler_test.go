@@ -2,7 +2,6 @@ package shieldpassword
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -14,18 +13,9 @@ import (
 func TestUserRegistration(t *testing.T) {
 	ctx := context.Background()
 	db := testutil.MustDB(ctx, t)
-	logger := slog.Default()
-	config := &Config[any]{
-		PasswordHasher: DefaultPasswordHasher,
-		Logger:         logger,
-	}
+	config := NewConfig[any]()
 	pool := db.Pool()
-	h := &Handler[any]{
-		config:           config,
-		pool:             pool,
-		PasswordVerifier: nil,
-	}
-
+	h := NewHandler(pool, config)
 	t.Run("register user", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()

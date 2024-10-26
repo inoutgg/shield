@@ -1,6 +1,7 @@
 package shieldpasswordreset
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -24,8 +25,8 @@ import (
 var ErrUsedPasswordResetToken = errors.New("shield/passwordreset: used password reset token")
 
 const (
-	ResetTokenExpiry = time.Duration(12 * time.Hour)
-	ResetTokenLength = 32
+	DefaultResetTokenExpiry = time.Duration(12 * time.Hour)
+	DefaultResetTokenLength = 32
 )
 
 // Config is the configuration for the password handler.
@@ -38,31 +39,41 @@ type Config struct {
 
 	// TokenLength set the length of the reset token.
 	//
-	// Defaults to ResetTokenExpiry.
+	// Defaults to DefaultResetTokenExpiry.
 	TokenLength int // optinal
 
 	// TokenExpiryIn set the expiry time of the reset token.
+	//
+	// Defaults to DefaultResetTokenLength
 	TokenExpiryIn time.Duration // optional
 }
 
+func (c *Config) defaults() {
+	c.TokenExpiryIn = cmp.Or(c.TokenExpiryIn, DefaultResetTokenExpiry)
+	c.TokenLength = cmp.Or(c.TokenLength, DefaultResetTokenLength)
+	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
+	c.PasswordHasher = cmp.Or(c.PasswordHasher, shieldpassword.DefaultPasswordHasher)
+}
+
+func (c *Config) assert() {
+	debug.Assert(c.PasswordHasher != nil, "PasswordHasher must be set")
+	debug.Assert(c.Logger != nil, "Logger must be set")
+}
+
 // NewConfig creates a new config.
-func NewConfig(config ...func(*Config)) *Config {
-	cfg := Config{
-		TokenExpiryIn: ResetTokenExpiry,
-		TokenLength:   ResetTokenLength,
+func NewConfig(opts ...func(*Config)) *Config {
+	config := Config{
+		TokenExpiryIn: DefaultResetTokenExpiry,
+		TokenLength:   DefaultResetTokenLength,
+	}
+	for _, opt := range opts {
+		opt(&config)
 	}
 
-	for _, f := range config {
-		f(&cfg)
-	}
+	config.defaults()
+	config.assert()
 
-	if cfg.PasswordHasher == nil {
-		cfg.PasswordHasher = shieldpassword.DefaultPasswordHasher
-	}
-
-	debug.Assert(cfg.PasswordHasher != nil, "password hasher should be set")
-
-	return &cfg
+	return &config
 }
 
 // WithPasswordHasher configures the password hasher.
@@ -71,11 +82,6 @@ func NewConfig(config ...func(*Config)) *Config {
 // such as user registrration, password reset and password verification.
 func WithPasswordHasher(hasher shieldpassword.PasswordHasher) func(*Config) {
 	return func(cfg *Config) { cfg.PasswordHasher = hasher }
-}
-
-// WithLogger configures the logger.
-func WithLogger(logger *slog.Logger) func(*Config) {
-	return func(cfg *Config) { cfg.Logger = logger }
 }
 
 // ResetTokenMessagePayload is the payload for the reset token message.
@@ -95,8 +101,25 @@ type PasswordResetSuccessMessagePayload struct{}
 // HTTP form requests.
 type Handler struct {
 	pool   *pgxpool.Pool
-	config *Config
 	sender shieldsender.Sender
+	config *Config
+}
+
+func NewHandler(pool *pgxpool.Pool, sender shieldsender.Sender, config *Config) *Handler {
+	if config == nil {
+		config = NewConfig()
+	}
+	config.assert()
+
+	h := Handler{pool, sender, config}
+	h.assert()
+
+	return &h
+}
+
+func (h *Handler) assert() {
+	debug.Assert(h.pool != nil, "pool must be set")
+	debug.Assert(h.sender != nil, "sender must be set")
 }
 
 // HandlePasswordReset handles a password reset request.
@@ -157,10 +180,9 @@ func (h *Handler) HandlePasswordResetConfirm(
 	password, tokStr string,
 ) error {
 	queries := dbsqlc.New()
-	hasher := h.config.PasswordHasher
 
-	// NOTE: hash password upfront to avoid unnecessary database TX delay.
-	passwordHash, err := hasher.Hash(password)
+	// Hashing password before tx to avoid unnecessary database delay.
+	passwordHash, err := h.config.PasswordHasher.Hash(password)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to hash password: %w", err)
 	}

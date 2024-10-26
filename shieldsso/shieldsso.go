@@ -64,22 +64,22 @@ func HandleCallback[T any](
 
 	extError := q.Get("error")
 	if extError != "" {
-		return nil, fmt.Errorf("shield/oauth: external error: %s", extError)
+		return nil, fmt.Errorf("shield/sso: external error: %s", extError)
 	}
 
 	code := q.Get("code")
 	if code == "" {
-		return nil, fmt.Errorf("shield/oauth: missing authentication code")
+		return nil, fmt.Errorf("shield/sso: missing authentication code")
 	}
 
 	token, err := provider.ExchangeCode(ctx, code)
 	if err != nil {
-		return nil, fmt.Errorf("shield/oauth: unable to exchange code for token: %w", err)
+		return nil, fmt.Errorf("shield/sso: unable to exchange code for token: %w", err)
 	}
 
 	userInfo, err := provider.UserInfo(ctx, token)
 	if err != nil {
-		return nil, fmt.Errorf("shield/oauth: unable to get user info: %w", err)
+		return nil, fmt.Errorf("shield/sso: unable to get user info: %w", err)
 	}
 
 	return &ProviderInfo[T]{
