@@ -13,7 +13,7 @@ import (
 )
 
 const createUserSession = `-- name: CreateUserSession :one
-INSERT INTO user_sessions (id, user_id, expires_at)
+INSERT INTO shield_user_sessions (id, user_id, expires_at)
 VALUES ($1::UUID, $2::UUID, $3)
 RETURNING id
 `
@@ -32,7 +32,7 @@ func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUser
 }
 
 const expireAllSessionsByUserID = `-- name: ExpireAllSessionsByUserID :many
-UPDATE user_sessions
+UPDATE shield_user_sessions
 SET expires_at = NOW()
 WHERE user_id = $1::UUID
 RETURNING id
@@ -59,7 +59,10 @@ func (q *Queries) ExpireAllSessionsByUserID(ctx context.Context, db DBTX, userID
 }
 
 const expireSessionByID = `-- name: ExpireSessionByID :one
-UPDATE user_sessions SET expires_at = NOW() WHERE id = $1::UUID RETURNING id
+UPDATE shield_user_sessions
+SET expires_at = NOW()
+WHERE id = $1::UUID
+RETURNING id
 `
 
 func (q *Queries) ExpireSessionByID(ctx context.Context, db DBTX, id uuid.UUID) (uuid.UUID, error) {
@@ -70,14 +73,14 @@ func (q *Queries) ExpireSessionByID(ctx context.Context, db DBTX, id uuid.UUID) 
 
 const findUserSessionByID = `-- name: FindUserSessionByID :one
 SELECT id, created_at, updated_at, expires_at, user_id, evicted_by
-FROM user_sessions
+FROM shield_user_sessions
 WHERE id = $1::UUID AND expires_at > NOW()
 LIMIT 1
 `
 
-func (q *Queries) FindUserSessionByID(ctx context.Context, db DBTX, id uuid.UUID) (UserSession, error) {
+func (q *Queries) FindUserSessionByID(ctx context.Context, db DBTX, id uuid.UUID) (ShieldUserSession, error) {
 	row := db.QueryRow(ctx, findUserSessionByID, id)
-	var i UserSession
+	var i ShieldUserSession
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

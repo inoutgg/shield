@@ -12,7 +12,7 @@ import (
 )
 
 const changeUserEmailByID = `-- name: ChangeUserEmailByID :exec
-UPDATE users
+UPDATE shield_users
 SET
   email = $1,
   is_email_verified = FALSE
@@ -30,7 +30,7 @@ func (q *Queries) ChangeUserEmailByID(ctx context.Context, db DBTX, arg ChangeUs
 }
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (id, email)
+INSERT INTO shield_users (id, email)
 VALUES ($1::UUID, $2)
 `
 
@@ -45,12 +45,12 @@ func (q *Queries) CreateUser(ctx context.Context, db DBTX, arg CreateUserParams)
 }
 
 const findUserByEmail = `-- name: FindUserByEmail :one
-SELECT id, created_at, updated_at, email, is_email_verified FROM users WHERE email = $1 LIMIT 1
+SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE email = $1 LIMIT 1
 `
 
-func (q *Queries) FindUserByEmail(ctx context.Context, db DBTX, email string) (User, error) {
+func (q *Queries) FindUserByEmail(ctx context.Context, db DBTX, email string) (ShieldUser, error) {
 	row := db.QueryRow(ctx, findUserByEmail, email)
-	var i User
+	var i ShieldUser
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -62,12 +62,12 @@ func (q *Queries) FindUserByEmail(ctx context.Context, db DBTX, email string) (U
 }
 
 const findUserByID = `-- name: FindUserByID :one
-SELECT id, created_at, updated_at, email, is_email_verified FROM users WHERE id = $1::UUID LIMIT 1
+SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1::UUID LIMIT 1
 `
 
-func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id uuid.UUID) (User, error) {
+func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id uuid.UUID) (ShieldUser, error) {
 	row := db.QueryRow(ctx, findUserByID, id)
-	var i User
+	var i ShieldUser
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -79,7 +79,7 @@ func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id uuid.UUID) (User
 }
 
 const markUserEmailVerificationTokenAsUsed = `-- name: MarkUserEmailVerificationTokenAsUsed :exec
-UPDATE user_email_verification_tokens
+UPDATE shield_user_email_verification_tokens
 SET is_used = TRUE
 WHERE token = $1
 `
@@ -92,7 +92,7 @@ func (q *Queries) MarkUserEmailVerificationTokenAsUsed(ctx context.Context, db D
 const upsertEmailVerificationToken = `-- name: UpsertEmailVerificationToken :one
 WITH
   token AS (
-    INSERT INTO user_email_verification_tokens
+    INSERT INTO shield_user_email_verification_tokens
       (id, user_id, token, is_used)
     VALUES
       ($1::UUID, $2, $3, $4, FALSE)

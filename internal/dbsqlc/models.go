@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type PasswordResetToken struct {
+type ShieldPasswordResetToken struct {
 	ID        uuid.UUID
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
@@ -19,7 +19,7 @@ type PasswordResetToken struct {
 	UserID    uuid.UUID
 }
 
-type User struct {
+type ShieldUser struct {
 	ID              uuid.UUID
 	CreatedAt       pgtype.Timestamp
 	UpdatedAt       pgtype.Timestamp
@@ -27,7 +27,7 @@ type User struct {
 	IsEmailVerified bool
 }
 
-type UserCredential struct {
+type ShieldUserCredential struct {
 	ID                   uuid.UUID
 	CreatedAt            pgtype.Timestamp
 	UpdatedAt            pgtype.Timestamp
@@ -37,7 +37,7 @@ type UserCredential struct {
 	UserCredentialSecret string
 }
 
-type UserEmailVerificationToken struct {
+type ShieldUserEmailVerificationToken struct {
 	ID        uuid.UUID
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
@@ -47,7 +47,7 @@ type UserEmailVerificationToken struct {
 	UserID    uuid.UUID
 }
 
-type UserSession struct {
+type ShieldUserSession struct {
 	ID        uuid.UUID
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp

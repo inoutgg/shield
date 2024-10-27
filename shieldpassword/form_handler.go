@@ -185,11 +185,13 @@ func (h *FormHandler[T]) HandleUserLogin(r *http.Request) (*shield.User[T], erro
 	if err != nil {
 		if errors.Is(err, shield.ErrAuthenticatedUser) {
 			return nil, httperror.FromError(err, http.StatusForbidden)
-		} else if errors.Is(err, ErrPasswordIncorrect) || errors.Is(err, shield.ErrUserNotFound) {
-			return nil, httperror.FromError(err, http.StatusUnauthorized, "either email or password is incorrect")
+		} else if errors.Is(err, ErrPasswordIncorrect) ||
+			errors.Is(err, shield.ErrUserNotFound) {
+			return nil, httperror.FromError(err, http.StatusUnauthorized,
+				"either email or password is incorrect")
 		}
 
-		return nil, httperror.FromError(err, http.StatusInternalServerError)
+		return nil, httperror.FromError(err, http.StatusInternalServerError, "unexpected server error")
 	}
 
 	return result, nil

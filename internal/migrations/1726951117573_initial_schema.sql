@@ -1,6 +1,6 @@
 -- migration: 1726948730233_initial_schema.sql
 
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS shield_users (
   id UUID NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   UNIQUE (email)
 );
 
-CREATE TABLE IF NOT EXISTS user_email_verification_tokens (
+CREATE TABLE IF NOT EXISTS shield_user_email_verification_tokens (
   id UUID NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -21,11 +21,11 @@ CREATE TABLE IF NOT EXISTS user_email_verification_tokens (
   PRIMARY KEY (user_id, id),
   UNIQUE (email, is_used),
   UNIQUE (token),
-  FOREIGN KEY (user_id) REFERENCES users (id)
+  FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS user_credentials (
+CREATE TABLE IF NOT EXISTS shield_user_credentials (
   id UUID NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -36,11 +36,11 @@ CREATE TABLE IF NOT EXISTS user_credentials (
   PRIMARY KEY (user_id, id),
   UNIQUE (name, user_credential_key),
   UNIQUE (name, user_id),
-  FOREIGN KEY (user_id) REFERENCES users (id)
+  FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS password_reset_tokens (
+CREATE TABLE IF NOT EXISTS shield_password_reset_tokens (
   id UUID NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -51,13 +51,13 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   PRIMARY KEY (user_id, id),
   UNIQUE (token),
   UNIQUE (user_id, is_used),
-  FOREIGN KEY (user_id) REFERENCES users (id)
+  FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE,
   CHECK (expires_at > CURRENT_TIMESTAMP),
   CHECK (expires_at > created_at)
 );
 
-CREATE TABLE IF NOT EXISTS user_sessions (
+CREATE TABLE IF NOT EXISTS shield_user_sessions (
   id UUID NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -66,17 +66,17 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   evicted_by UUID NULL,
   PRIMARY KEY (user_id, id),
   UNIQUE (id),
-  FOREIGN KEY (user_id) REFERENCES users (id)
+  FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE,
-  FOREIGN KEY (evicted_by) REFERENCES users (id),
+  FOREIGN KEY (evicted_by) REFERENCES shield_users (id),
   CHECK (expires_at > CURRENT_TIMESTAMP),
   CHECK (expires_at > created_at)
 );
 
 ---- create above / drop below ----
 
-DROP TABLE IF EXISTS user_sessions;
-DROP TABLE IF EXISTS password_reset_tokens;
-DROP TABLE IF EXISTS user_credentials;
-DROP TABLE IF EXISTS user_email_verification_tokens;
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS shield_user_sessions;
+DROP TABLE IF EXISTS shield_password_reset_tokens;
+DROP TABLE IF EXISTS shield_user_credentials;
+DROP TABLE IF EXISTS shield_user_email_verification_tokens;
+DROP TABLE IF EXISTS shield_users;

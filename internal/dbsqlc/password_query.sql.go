@@ -13,7 +13,7 @@ import (
 )
 
 const createUserPasswordCredential = `-- name: CreateUserPasswordCredential :exec
-INSERT INTO user_credentials
+INSERT INTO shield_user_credentials
   (id, name, user_id, user_credential_key, user_credential_secret)
 VALUES
   (
@@ -43,7 +43,7 @@ func (q *Queries) CreateUserPasswordCredential(ctx context.Context, db DBTX, arg
 }
 
 const deleteExpiredPasswordResetTokens = `-- name: DeleteExpiredPasswordResetTokens :exec
-DELETE FROM password_reset_tokens WHERE expires_at < now() RETURNING id
+DELETE FROM shield_password_reset_tokens WHERE expires_at < now() RETURNING id
 `
 
 func (q *Queries) DeleteExpiredPasswordResetTokens(ctx context.Context, db DBTX) error {
@@ -53,14 +53,14 @@ func (q *Queries) DeleteExpiredPasswordResetTokens(ctx context.Context, db DBTX)
 
 const findPasswordResetToken = `-- name: FindPasswordResetToken :one
 SELECT id, created_at, updated_at, is_used, token, expires_at, user_id
-FROM password_reset_tokens
+FROM shield_password_reset_tokens
 WHERE token = $1
 LIMIT 1 AND expires_at > now()
 `
 
-func (q *Queries) FindPasswordResetToken(ctx context.Context, db DBTX, token string) (PasswordResetToken, error) {
+func (q *Queries) FindPasswordResetToken(ctx context.Context, db DBTX, token string) (ShieldPasswordResetToken, error) {
 	row := db.QueryRow(ctx, findPasswordResetToken, token)
-	var i PasswordResetToken
+	var i ShieldPasswordResetToken
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -77,12 +77,12 @@ const findUserWithPasswordCredentialByEmail = `-- name: FindUserWithPasswordCred
 WITH
   credential AS (
     SELECT user_credential_key, user_credential_secret, user_id
-    FROM user_credentials
+    FROM shield_user_credentials
     WHERE name = 'password' AND user_credential_key = $1
   ),
   "user" AS (
     SELECT id, created_at, updated_at, email, is_email_verified
-    FROM users
+    FROM shield_users
     WHERE email = $1
   )
 SELECT "user".id, "user".created_at, "user".updated_at, "user".email, "user".is_email_verified, credential.user_credential_secret AS password_hash
@@ -117,7 +117,7 @@ func (q *Queries) FindUserWithPasswordCredentialByEmail(ctx context.Context, db 
 }
 
 const markPasswordResetTokenAsUsed = `-- name: MarkPasswordResetTokenAsUsed :exec
-UPDATE password_reset_tokens
+UPDATE shield_password_reset_tokens
 SET is_used = TRUE
 WHERE token = $1
 `
@@ -130,7 +130,7 @@ func (q *Queries) MarkPasswordResetTokenAsUsed(ctx context.Context, db DBTX, tok
 const upsertPasswordCredentialByUserID = `-- name: UpsertPasswordCredentialByUserID :exec
 WITH
   credential AS (
-    INSERT INTO user_credentials
+    INSERT INTO shield_user_credentials
       (id, name, user_id, user_credential_key, user_credential_secret)
     VALUES
       (
@@ -168,13 +168,14 @@ func (q *Queries) UpsertPasswordCredentialByUserID(ctx context.Context, db DBTX,
 const upsertPasswordResetToken = `-- name: UpsertPasswordResetToken :one
 WITH
   token AS (
-    INSERT INTO password_reset_tokens (id, user_id, token, expires_at, is_used)
+    INSERT INTO shield_password_reset_tokens
+      (id, user_id, token, expires_at, is_used)
     VALUES
       ($1::UUID, $2, $3, $4, FALSE)
     ON CONFLICT (user_id, is_used) DO UPDATE
       SET expires_at = greatest(
         excluded.expires_at,
-        password_reset_tokens.expires_at
+        shield_password_reset_tokens.expires_at
       )
     RETURNING token, id, expires_at
   )

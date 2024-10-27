@@ -1,15 +1,15 @@
 -- name: CreateUser :exec
-INSERT INTO users (id, email)
+INSERT INTO shield_users (id, email)
 VALUES (@id::UUID, @email);
 
 -- name: FindUserByID :one
-SELECT * FROM users WHERE id = @id::UUID LIMIT 1;
+SELECT * FROM shield_users WHERE id = @id::UUID LIMIT 1;
 
 -- name: FindUserByEmail :one
-SELECT * FROM users WHERE email = @email LIMIT 1;
+SELECT * FROM shield_users WHERE email = @email LIMIT 1;
 
 -- name: ChangeUserEmailByID :exec
-UPDATE users
+UPDATE shield_users
 SET
   email = @email,
   is_email_verified = FALSE
@@ -18,7 +18,7 @@ WHERE id = @id;
 -- name: UpsertEmailVerificationToken :one
 WITH
   token AS (
-    INSERT INTO user_email_verification_tokens
+    INSERT INTO shield_user_email_verification_tokens
       (id, user_id, token, is_used)
     VALUES
       (@id::UUID, @user_id, @token, @expires_at, FALSE)
@@ -29,6 +29,6 @@ SELECT *
 FROM token;
 
 -- name: MarkUserEmailVerificationTokenAsUsed :exec
-UPDATE user_email_verification_tokens
+UPDATE shield_user_email_verification_tokens
 SET is_used = TRUE
 WHERE token = @token;

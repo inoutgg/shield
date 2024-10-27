@@ -1,5 +1,5 @@
 -- name: CreateUserPasswordCredential :exec
-INSERT INTO user_credentials
+INSERT INTO shield_user_credentials
   (id, name, user_id, user_credential_key, user_credential_secret)
 VALUES
   (
@@ -13,7 +13,7 @@ VALUES
 -- name: UpsertPasswordCredentialByUserID :exec
 WITH
   credential AS (
-    INSERT INTO user_credentials
+    INSERT INTO shield_user_credentials
       (id, name, user_id, user_credential_key, user_credential_secret)
     VALUES
       (
@@ -34,12 +34,12 @@ FROM credential;
 WITH
   credential AS (
     SELECT user_credential_key, user_credential_secret, user_id
-    FROM user_credentials
+    FROM shield_user_credentials
     WHERE name = 'password' AND user_credential_key = @email
   ),
   "user" AS (
     SELECT *
-    FROM users
+    FROM shield_users
     WHERE email = @email
   )
 SELECT "user".*, credential.user_credential_secret AS password_hash
@@ -52,13 +52,14 @@ FROM
 -- name: UpsertPasswordResetToken :one
 WITH
   token AS (
-    INSERT INTO password_reset_tokens (id, user_id, token, expires_at, is_used)
+    INSERT INTO shield_password_reset_tokens
+      (id, user_id, token, expires_at, is_used)
     VALUES
       (@id::UUID, @user_id, @token, @expires_at, FALSE)
     ON CONFLICT (user_id, is_used) DO UPDATE
       SET expires_at = greatest(
         excluded.expires_at,
-        password_reset_tokens.expires_at
+        shield_password_reset_tokens.expires_at
       )
     RETURNING token, id, expires_at
   )
@@ -67,14 +68,14 @@ FROM token;
 
 -- name: FindPasswordResetToken :one
 SELECT *
-FROM password_reset_tokens
+FROM shield_password_reset_tokens
 WHERE token = @token
 LIMIT 1 AND expires_at > now();
 
 -- name: MarkPasswordResetTokenAsUsed :exec
-UPDATE password_reset_tokens
+UPDATE shield_password_reset_tokens
 SET is_used = TRUE
 WHERE token = @token;
 
 -- name: DeleteExpiredPasswordResetTokens :exec
-DELETE FROM password_reset_tokens WHERE expires_at < now() RETURNING id;
+DELETE FROM shield_password_reset_tokens WHERE expires_at < now() RETURNING id;

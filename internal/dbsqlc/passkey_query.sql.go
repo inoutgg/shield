@@ -13,7 +13,7 @@ import (
 )
 
 const createUserPasskeyCredential = `-- name: CreateUserPasskeyCredential :exec
-INSERT INTO user_credentials
+INSERT INTO shield_user_credentials
   (id, name, user_id, user_credential_key, user_credential_secret)
 VALUES
   (
@@ -44,20 +44,21 @@ func (q *Queries) CreateUserPasskeyCredential(ctx context.Context, db DBTX, arg 
 
 const findUserWithPasskeyCredentialByEmail = `-- name: FindUserWithPasskeyCredentialByEmail :one
 WITH
-credential AS (
+  credential AS (
     SELECT user_credential_key, user_credential_secret, user_id
-    FROM user_credentials
+    FROM shield_user_credentials
     WHERE name = 'passkey' AND user_credential_key = $1
-),
-"user" AS (
+  ),
+  "user" AS (
     SELECT id, created_at, updated_at, email, is_email_verified
-    FROM users
+    FROM shield_users
     WHERE email = $1
-)
+  )
 SELECT "user".id, "user".created_at, "user".updated_at, "user".email, "user".is_email_verified, credential.user_credential_secret::JSON AS user_credential
 FROM
-credential
-JOIN "user"
+  credential
+  -- validate that the credential and user has the same email address.
+  JOIN "user"
     ON credential.user_id = "user".id
 `
 
@@ -70,7 +71,6 @@ type FindUserWithPasskeyCredentialByEmailRow struct {
 	UserCredential  []byte
 }
 
-// validate that the credential and user has the same email address.
 func (q *Queries) FindUserWithPasskeyCredentialByEmail(ctx context.Context, db DBTX, email string) (FindUserWithPasskeyCredentialByEmailRow, error) {
 	row := db.QueryRow(ctx, findUserWithPasskeyCredentialByEmail, email)
 	var i FindUserWithPasskeyCredentialByEmailRow

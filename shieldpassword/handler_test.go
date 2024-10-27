@@ -37,13 +37,13 @@ func TestUserRegistration(t *testing.T) {
 		uid := user.ID.String()
 		if err := pool.QueryRow(ctx, `
       SELECT
-        users.email,
-        user_credentials.user_credential_key,
-        user_credentials.user_credential_secret
-      FROM users
-      JOIN user_credentials
-        ON users.id = user_credentials.user_id
-      WHERE users.id = $1`, uid).
+        "user".email,
+        cred.user_credential_key,
+        cred.user_credential_secret
+      FROM shield_users AS "user"
+      JOIN shield_user_credentials AS cred
+        ON "user".id = cred.user_id
+      WHERE "user".id = $1`, uid).
 			Scan(&actual.UserEmail, &actual.CredentialEmail, &actual.CredentialPassword); err != nil {
 			t.Fatal(err)
 		}
