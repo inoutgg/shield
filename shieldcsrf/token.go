@@ -1,6 +1,7 @@
 package shieldcsrf
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	"go.inout.gg/foundations/must"
 	"go.inout.gg/shield/internal/random"
 )
 
@@ -165,8 +167,9 @@ func decodeCookieValue(val string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-// computeChecksum return the sha256 checksum of the given value and secret.
+// computeChecksum return the sha256 checksum of the given value with secret.
 func computeChecksum(val, secret string) string {
-	cs := sha256.Sum256([]byte(fmt.Sprintf("%s%s", val, secret)))
-	return hex.EncodeToString(cs[:])
+	h := hmac.New(sha256.New, []byte(secret))
+	_ = must.Must(h.Write([]byte(val)))
+	return hex.EncodeToString(h.Sum(nil))
 }
