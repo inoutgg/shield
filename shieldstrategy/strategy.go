@@ -16,8 +16,6 @@ type Session[T any] struct {
 	ExpiresAt time.Time
 
 	// T holds additional session data.
-	//
-	// Make sure to
 	T *T
 }
 
