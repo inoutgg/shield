@@ -19,6 +19,17 @@ type ShieldPasswordResetToken struct {
 	UserID    uuid.UUID
 }
 
+type ShieldRecoveryCode struct {
+	ID               uuid.UUID
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+	UserID           uuid.UUID
+	RecoveryCodeHash string
+	IsConsumable     bool
+	EvictedBy        uuid.UUID
+	EvictedAt        pgtype.Timestamp
+}
+
 type ShieldUser struct {
 	ID              uuid.UUID
 	CreatedAt       pgtype.Timestamp

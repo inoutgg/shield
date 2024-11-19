@@ -11,7 +11,7 @@ func secureBytes(l int) ([]byte, error) {
 	bytes := make([]byte, l)
 	_, err := rand.Read(bytes)
 	if err != nil {
-		return bytes, fmt.Errorf("random: error reading random bytes: %w", err)
+		return bytes, fmt.Errorf("shield: error reading random bytes: %w", err)
 	}
 	return bytes, nil
 }

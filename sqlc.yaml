@@ -6,6 +6,7 @@ sql:
       - "internal/dbsqlc/session_query.sql"
       - "internal/dbsqlc/password_query.sql"
       - "internal/dbsqlc/passkey_query.sql"
+      - "internal/dbsqlc/recovery_code_query.sql"
     engine: "postgresql"
     gen:
       go:

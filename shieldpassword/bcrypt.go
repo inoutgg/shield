@@ -17,7 +17,11 @@ type bcryptPasswordHasher struct {
 	cost int
 }
 
-// NewBcryptPasswordHasher implements a password hashing algorithm with bcrypt.
+// NewBcryptPasswordHasher creates a password hasher using the bcrypt algorithm.
+//
+// Please note that bcrypt has a maximum input length of 72 bytes. For passwords
+// requiring more than 72 bytes of data, consider using an alternative algorithm
+// such as Argon2.
 func NewBcryptPasswordHasher(cost int) PasswordHasher {
 	return &bcryptPasswordHasher{cost}
 }
