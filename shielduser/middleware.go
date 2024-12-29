@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"go.inout.gg/foundations/debug"
-	"go.inout.gg/foundations/http/htmx"
 	"go.inout.gg/foundations/http/httperror"
 	"go.inout.gg/foundations/http/httpmiddleware"
 	"go.inout.gg/shield"
@@ -100,7 +99,7 @@ func RedirectAuthenticatedUserMiddleware(redirectUrl string) httpmiddleware.Midd
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if IsAuthenticated(r.Context()) {
-				htmx.Redirect(w, r, redirectUrl, http.StatusTemporaryRedirect)
+				http.Redirect(w, r, redirectUrl, http.StatusTemporaryRedirect)
 				return
 			}
 

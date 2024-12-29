@@ -22,15 +22,12 @@ func NewLogoutHandler(pool *pgxpool.Pool, config *Config) *LogoutHandler {
 }
 
 func (h *LogoutHandler) HandleLogout(w http.ResponseWriter, r *http.Request) error {
-	queries := dbsqlc.New()
-	ctx := r.Context()
-
 	usr := shielduser.FromRequest[any](r)
 	if usr == nil {
 		return httperror.FromError(shield.ErrUnauthenticatedUser, http.StatusUnauthorized)
 	}
 
-	if _, err := queries.ExpireSessionByID(ctx, h.pool, usr.ID); err != nil {
+	if _, err := dbsqlc.New().ExpireSessionByID(r.Context(), h.pool, usr.ID); err != nil {
 		return httperror.FromError(err, http.StatusInternalServerError)
 	}
 
