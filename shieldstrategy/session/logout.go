@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.inout.gg/foundations/http/cookie"
+	"go.inout.gg/foundations/http/httpcookie"
 	"go.inout.gg/foundations/http/httperror"
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
@@ -32,7 +32,7 @@ func (h *LogoutHandler) HandleLogout(w http.ResponseWriter, r *http.Request) err
 	}
 
 	// Delete session cookie.
-	cookie.Delete(w, r, h.config.CookieName)
+	httpcookie.Delete(w, r, h.config.CookieName)
 
 	return nil
 }

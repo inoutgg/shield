@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.inout.gg/foundations/http/cookie"
+	"go.inout.gg/foundations/http/httpcookie"
 	"go.inout.gg/foundations/sqldb"
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
@@ -61,11 +61,10 @@ func (s *sessionStrategy[T]) Issue(
 	user *shield.User[T],
 ) (*shieldstrategy.Session[T], error) {
 	ctx := r.Context()
-	queries := dbsqlc.New()
 
 	sessionID := uuidv7.Must()
 	expiresAt := time.Now().Add(s.config.ExpiresIn)
-	_, err := queries.CreateUserSession(ctx, s.pool, dbsqlc.CreateUserSessionParams{
+	_, err := dbsqlc.New().CreateUserSession(ctx, s.pool, dbsqlc.CreateUserSessionParams{
 		ID:        sessionID,
 		UserID:    user.ID,
 		ExpiresAt: pgtype.Timestamp{Time: expiresAt, Valid: true},
@@ -74,12 +73,12 @@ func (s *sessionStrategy[T]) Issue(
 		return nil, fmt.Errorf("shield/session: failed to create session: %w", err)
 	}
 
-	cookie.Set(
+	httpcookie.Set(
 		w,
 		s.config.CookieName,
 		sessionID.String(),
-		cookie.WithHttpOnly,
-		cookie.WithExpiresIn(s.config.ExpiresIn),
+		httpcookie.WithHttpOnly,
+		httpcookie.WithExpiresIn(s.config.ExpiresIn),
 	)
 
 	return &shieldstrategy.Session[T]{
@@ -96,14 +95,14 @@ func (s *sessionStrategy[T]) Authenticate(
 	queries := dbsqlc.New()
 	ctx := r.Context()
 
-	sessionIDStr := cookie.Get(r, s.config.CookieName)
+	sessionIDStr := httpcookie.Get(r, s.config.CookieName)
 	if sessionIDStr == "" {
 		return nil, shield.ErrUnauthenticatedUser
 	}
 
 	sessionID, err := uuidv7.FromString(sessionIDStr)
 	if err != nil {
-		cookie.Delete(w, r, s.config.CookieName)
+		httpcookie.Delete(w, r, s.config.CookieName)
 		return nil, shield.ErrUnauthenticatedUser
 	}
 
@@ -122,7 +121,7 @@ func (s *sessionStrategy[T]) Authenticate(
 				slog.Any("error", err),
 			)
 
-			cookie.Delete(w, r, s.config.CookieName)
+			httpcookie.Delete(w, r, s.config.CookieName)
 			return nil, shield.ErrUnauthenticatedUser
 		}
 

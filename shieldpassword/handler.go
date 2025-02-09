@@ -159,7 +159,7 @@ func (h *Handler[T]) handleUserRegistrationTx(
 	tx pgx.Tx,
 ) (uuid.UUID, error) {
 	q := dbsqlc.New()
-	uid := uuidv7.Must()	
+	uid := uuidv7.Must()
 	if err := q.CreateUser(ctx, tx, dbsqlc.CreateUserParams{
 		ID:    uid,
 		Email: email,
