@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-playground/mold/v4/modifiers"
-	"github.com/go-playground/mold/v4/scrubbers"
-	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httperror"
@@ -16,9 +13,9 @@ import (
 )
 
 var (
-	FormValidator = validator.New(validator.WithRequiredStructEnabled())
-	FormScrubber  = scrubbers.New()
-	FormModifier  = modifiers.New()
+	FormValidator = shield.DefaultFormValidator
+	FormScrubber  = shield.DefaultFormScrubber
+	FormModifier  = shield.DefaultFormModifier
 )
 
 const (
@@ -138,6 +135,10 @@ func (h *HTTPHandler[T]) HandleUserRegistration(r *http.Request) (*shield.User[T
 	if err != nil {
 		if errors.Is(err, shield.ErrAuthenticatedUser) {
 			return nil, httperror.FromError(err, http.StatusForbidden)
+		}
+
+		if errors.Is(err, ErrEmailAlreadyTaken) {
+			return nil, httperror.FromError(err, http.StatusConflict)
 		}
 
 		return nil, httperror.FromError(err, http.StatusInternalServerError)

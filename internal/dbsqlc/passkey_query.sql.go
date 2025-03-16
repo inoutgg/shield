@@ -7,9 +7,9 @@ package dbsqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUserPasskeyCredential = `-- name: CreateUserPasskeyCredential :exec
@@ -64,8 +64,8 @@ FROM
 
 type FindUserWithPasskeyCredentialByEmailRow struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamp
-	UpdatedAt       pgtype.Timestamp
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Email           string
 	IsEmailVerified bool
 	UserCredential  []byte

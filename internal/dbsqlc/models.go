@@ -5,43 +5,45 @@
 package dbsqlc
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ShieldPasswordResetToken struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
-	ExpiresAt pgtype.Timestamp
+	ExpiresAt time.Time
 	UserID    uuid.UUID
 }
 
 type ShieldRecoveryCode struct {
 	ID               uuid.UUID
-	CreatedAt        pgtype.Timestamp
-	UpdatedAt        pgtype.Timestamp
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	UserID           uuid.UUID
 	RecoveryCodeHash string
 	IsConsumable     bool
 	EvictedBy        uuid.UUID
-	EvictedAt        pgtype.Timestamp
+	EvictedAt        pgtype.Timestamptz
 }
 
 type ShieldUser struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamp
-	UpdatedAt       pgtype.Timestamp
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Email           string
 	IsEmailVerified bool
 }
 
 type ShieldUserCredential struct {
 	ID                   uuid.UUID
-	CreatedAt            pgtype.Timestamp
-	UpdatedAt            pgtype.Timestamp
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 	Name                 string
 	UserID               uuid.UUID
 	UserCredentialKey    string
@@ -50,8 +52,8 @@ type ShieldUserCredential struct {
 
 type ShieldUserEmailVerificationToken struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	Email     string
@@ -60,9 +62,9 @@ type ShieldUserEmailVerificationToken struct {
 
 type ShieldUserSession struct {
 	ID        uuid.UUID
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-	ExpiresAt pgtype.Timestamp
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	ExpiresAt time.Time
 	UserID    uuid.UUID
 	EvictedBy uuid.UUID
 }

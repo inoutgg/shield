@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/http/httpcookie"
 	"go.inout.gg/foundations/sqldb"
@@ -67,7 +66,7 @@ func (s *sessionStrategy[T]) Issue(
 	_, err := dbsqlc.New().CreateUserSession(ctx, s.pool, dbsqlc.CreateUserSessionParams{
 		ID:        sessionID,
 		UserID:    user.ID,
-		ExpiresAt: pgtype.Timestamp{Time: expiresAt, Valid: true},
+		ExpiresAt: expiresAt,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("shield/session: failed to create session: %w", err)
@@ -140,7 +139,7 @@ func (s *sessionStrategy[T]) Authenticate(
 
 	return &shieldstrategy.Session[T]{
 		ID:        session.ID,
-		ExpiresAt: session.ExpiresAt.Time,
+		ExpiresAt: session.ExpiresAt,
 		T:         nil,
 	}, nil
 }

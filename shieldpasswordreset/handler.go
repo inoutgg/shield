@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/must"
@@ -147,13 +146,10 @@ func (h *Handler) HandlePasswordReset(
 
 	tokStr := must.Must(random.SecureHexString(h.config.TokenLength))
 	tok, err := queries.UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
-		ID:     uuidv7.Must(),
-		Token:  tokStr,
-		UserID: user.ID,
-		ExpiresAt: pgtype.Timestamp{
-			Time:  time.Now().Add(h.config.TokenExpiryIn),
-			Valid: true,
-		},
+		ID:        uuidv7.Must(),
+		Token:     tokStr,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(h.config.TokenExpiryIn),
 	})
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to upsert password reset token: %w", err)

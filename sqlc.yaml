@@ -2,11 +2,11 @@ version: "2"
 sql:
   - schema: "internal/migrations"
     queries:
-      - "internal/dbsqlc/query.sql"
       - "internal/dbsqlc/session_query.sql"
       - "internal/dbsqlc/password_query.sql"
       - "internal/dbsqlc/passkey_query.sql"
       - "internal/dbsqlc/recovery_code_query.sql"
+      - "internal/dbsqlc/user_query.sql"
     engine: "postgresql"
     gen:
       go:
@@ -21,3 +21,9 @@ sql:
           - db_type: "uuid"
             nullable: true
             go_type: "github.com/google/uuid.UUID"
+          - db_type: "pg_catalog.timestamptz"
+            go_type:
+              type: "time.Time"
+            nullable: false
+          - db_type: "pg_catalog.timestamptz"
+            nullable: true

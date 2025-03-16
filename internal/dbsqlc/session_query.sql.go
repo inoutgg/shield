@@ -7,9 +7,9 @@ package dbsqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUserSession = `-- name: CreateUserSession :one
@@ -21,7 +21,7 @@ RETURNING id
 type CreateUserSessionParams struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
-	ExpiresAt pgtype.Timestamp
+	ExpiresAt time.Time
 }
 
 func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (uuid.UUID, error) {

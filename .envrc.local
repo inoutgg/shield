@@ -1,6 +1,7 @@
-if use flake; then
+if nix flake show &> /dev/null; then
     use flake
 fi
 
+# test variables
 CONDUIT_DATABASE_URL="postgresql://local:local@localhost:5432/local?sslmode=disable"
-CONDUIT_MIGRATION_DIR="migrations"
+CONDUIT_MIGRATION_DIR="internal/migrations"

@@ -7,9 +7,9 @@ package dbsqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUserPasswordCredential = `-- name: CreateUserPasswordCredential :exec
@@ -95,8 +95,8 @@ FROM
 
 type FindUserWithPasswordCredentialByEmailRow struct {
 	ID              uuid.UUID
-	CreatedAt       pgtype.Timestamp
-	UpdatedAt       pgtype.Timestamp
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 	Email           string
 	IsEmailVerified bool
 	PasswordHash    string
@@ -187,13 +187,13 @@ type UpsertPasswordResetTokenParams struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
 	Token     string
-	ExpiresAt pgtype.Timestamp
+	ExpiresAt time.Time
 }
 
 type UpsertPasswordResetTokenRow struct {
 	Token     string
 	ID        uuid.UUID
-	ExpiresAt pgtype.Timestamp
+	ExpiresAt time.Time
 }
 
 func (q *Queries) UpsertPasswordResetToken(ctx context.Context, db DBTX, arg UpsertPasswordResetTokenParams) (UpsertPasswordResetTokenRow, error) {

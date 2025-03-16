@@ -5,6 +5,9 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/go-playground/mold/v4/modifiers"
+	"github.com/go-playground/mold/v4/scrubbers"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
@@ -13,6 +16,12 @@ const (
 	CredentialPasskey    = "passkey"
 	CredentialSsoTwitter = "sso_twitter"
 	CredentialSsoGoogle  = "sso_google"
+)
+
+var (
+	DefaultFormValidator = validator.New(validator.WithRequiredStructEnabled())
+	DefaultFormScrubber  = scrubbers.New()
+	DefaultFormModifier  = modifiers.New()
 )
 
 var (
