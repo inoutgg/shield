@@ -10,6 +10,9 @@ type PasswordHasher interface {
 }
 
 // DefaultPasswordHasher is the default password hashing algorithm used across.
+//
+//nolint:gochecknoglobals
 var DefaultPasswordHasher = NewBcryptPasswordHasher(BcryptDefaultCost)
 
+//nolint:gochecknoglobals
 var d = debug.Debuglog("shield/password")

@@ -5,15 +5,16 @@ import (
 	"fmt"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"go.inout.gg/shield/shieldsso"
 	"golang.org/x/oauth2"
+
+	"go.inout.gg/shield/shieldsso"
 )
 
 var _ shieldsso.Provider[any] = (*provider[any])(nil)
 
-var Issuer = "https://accounts.google.com"
+const Issuer = "https://accounts.google.com"
 
-var (
+const (
 	AuthorizePath = "/sso/google"
 	RedirectPath  = "/sso/google/callback"
 )
@@ -35,6 +36,8 @@ type provider[T any] struct {
 func NewProvider[T any](ctx context.Context, cfg *Config) (shieldsso.Provider[T], error) {
 	oidcProvider, err := oidc.NewProvider(ctx, Issuer)
 	if err != nil {
+		// TODO(roman@vanesyan.com): fix it
+		//nolint:wrapcheck
 		return nil, err
 	}
 
@@ -62,10 +65,14 @@ func (p *provider[T]) UserInfo(ctx context.Context, token *oauth2.Token) (shield
 		)
 	}
 
+	// TODO(roman@vanesyan.com): fix it
+	//nolint:nilnil
 	return nil, nil
 }
 
 func (p *provider[T]) ExchangeCode(ctx context.Context, code string) (*oauth2.Token, error) {
+	// TODO(roman@vanesyan.com): fix it
+	//nolint:wrapcheck
 	return p.config.Exchange(ctx, code)
 }
 

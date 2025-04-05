@@ -40,7 +40,7 @@ func (u unionStrategy[T]) Authenticate(
 	return nil, errors.Join(errs...)
 }
 
-func (_ unionStrategy[T]) Issue(
+func (unionStrategy[T]) Issue(
 	http.ResponseWriter,
 	*http.Request,
 	*shield.User[T],

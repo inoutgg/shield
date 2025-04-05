@@ -5,18 +5,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"go.inout.gg/shield"
 )
 
 type Session[T any] struct {
-	// ID is the session ID.
-	ID uuid.UUID
-
-	// ExpiresAt is the time at which the session expires.
 	ExpiresAt time.Time
-
-	// T holds additional session data.
-	T *T
+	T         *T
+	ID        uuid.UUID
 }
 
 // Authenticator authenticates the user.

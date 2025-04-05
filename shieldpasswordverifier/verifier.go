@@ -26,17 +26,15 @@ func (e *PasswordVerificationError) Error() string {
 }
 
 type Config struct {
-	// MinLength is the minimum length of the password.
-	MinLength int
-
-	// RequiredChars is the list of required characters.
 	RequiredChars PasswordRequiredChars
+	MinLength     int
 }
 
 // NewConfig creates a new Config with defaults.
 //
 // cfgs modifiers can be used to optionally override the defaults.
 func NewConfig(cfgs ...func(*Config)) *Config {
+	//nolint:exhaustruct
 	config := &Config{}
 	for _, f := range cfgs {
 		f(config)
@@ -70,7 +68,7 @@ type passwordVerifier struct {
 }
 
 // New creates a new PasswordVerifier.
-func New(config *Config) (*passwordVerifier, error) {
+func New(config *Config) (PasswordVerifier, error) {
 	return &passwordVerifier{
 		config,
 	}, nil
@@ -79,6 +77,7 @@ func New(config *Config) (*passwordVerifier, error) {
 // Verify verifies the strongness password.
 func (v *passwordVerifier) Verify(password string) error {
 	var reasons []Reason
+
 	var messages []string
 
 	if len(password) < v.config.MinLength {

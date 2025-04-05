@@ -3,6 +3,7 @@ package shieldpassword
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/sqldb"
+
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/uuidv7"
@@ -19,8 +21,8 @@ import (
 )
 
 var (
-	ErrEmailAlreadyTaken = fmt.Errorf("shield/password: email already taken")
-	ErrPasswordIncorrect = fmt.Errorf("shield/password: password incorrect")
+	ErrEmailAlreadyTaken = errors.New("shield/password: email already taken")
+	ErrPasswordIncorrect = errors.New("shield/password: password incorrect")
 )
 
 // Config is the configuration for the password handler.
@@ -28,7 +30,7 @@ type Config[T any] struct {
 	Logger           *slog.Logger
 	PasswordHasher   PasswordHasher
 	PasswordVerifier shieldpasswordverifier.PasswordVerifier
-	Hijacker         Hijacker[T]
+	Hooker           Hooker[T]
 }
 
 func (c *Config[T]) defaults() {
@@ -41,24 +43,25 @@ func (c *Config[T]) assert() {
 	debug.Assert(c.Logger != nil, "Logger must be set")
 }
 
-// Hijacker also to hijack into the user registration and logging in sessions
+// Hooker also to hook into the user registration and logging in sessions
 // and perform additional operations.
-type Hijacker[T any] interface {
-	// HijackUserRegisteration is called when registring a new user.
+type Hooker[T any] interface {
+	// HookUserRegisteration is called when registring a new user.
 	// Use this method to create an additional context for the user.
-	HijackUserRegisteration(context.Context, uuid.UUID, pgx.Tx) (T, error)
+	HookUserRegisteration(context.Context, uuid.UUID, pgx.Tx) (T, error)
 
-	// HijackUserLogin is called when a user is trying to login.
+	// HookUserLogin is called when a user is trying to login.
 	// Use this method to fetch additional data from the database for the user.
 	//
 	// Note that the user password is not verified at this moment yet.
-	HijackUserLogin(context.Context, uuid.UUID, pgx.Tx) (T, error)
+	HookUserLogin(context.Context, uuid.UUID, pgx.Tx) (T, error)
 }
 
 // NewConfig creates a new config.
 //
 // If no password hasher is configured, the DefaultPasswordHasher will be used.
 func NewConfig[T any](opts ...func(*Config[T])) *Config[T] {
+	//nolint:exhaustruct
 	config := Config[T]{}
 	for _, opt := range opts {
 		opt(&config)
@@ -78,8 +81,8 @@ func WithPasswordHasher[T any](hasher PasswordHasher) func(*Config[T]) {
 	return func(cfg *Config[T]) { cfg.PasswordHasher = hasher }
 }
 
-func WithHijacker[T any](hijacker Hijacker[T]) func(*Config[T]) {
-	return func(cfg *Config[T]) { cfg.Hijacker = hijacker }
+func WithHooker[T any](hooker Hooker[T]) func(*Config[T]) {
+	return func(cfg *Config[T]) { cfg.Hooker = hooker }
 }
 
 type Handler[T any] struct {
@@ -91,6 +94,7 @@ func NewHandler[T any](pool *pgxpool.Pool, config *Config[T]) *Handler[T] {
 	if config == nil {
 		config = NewConfig[T]()
 	}
+
 	config.assert()
 
 	h := Handler[T]{pool, config}
@@ -123,21 +127,24 @@ func (h *Handler[T]) HandleUserRegistration(
 	if err != nil {
 		return nil, fmt.Errorf("shield/password: failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	uid, err := h.handleUserRegistrationTx(ctx, email, passwordHash, tx)
 	if err != nil {
 		return nil, err
 	}
 
-	// An entry point for hijacking the user registration process.
+	// An entry point for hooking the user registration process.
 	var payload T
-	if h.config.Hijacker != nil {
-		d("registration hijacking is enabled, trying to get payload")
-		payload, err = h.config.Hijacker.HijackUserRegisteration(ctx, uid, tx)
+
+	if h.config.Hooker != nil {
+		d("registration hooking is enabled, trying to get payload")
+
+		payload, err = h.config.Hooker.HookUserRegisteration(ctx, uid, tx)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"shield/password: failed to hijack user registration: %w",
+				"shield/password: failed to hook user registration: %w",
 				err,
 			)
 		}
@@ -158,9 +165,9 @@ func (h *Handler[T]) handleUserRegistrationTx(
 	email, passwordHash string,
 	tx pgx.Tx,
 ) (uuid.UUID, error) {
-	q := dbsqlc.New()
 	uid := uuidv7.Must()
-	if err := q.CreateUser(ctx, tx, dbsqlc.CreateUserParams{
+
+	if err := dbsqlc.New().CreateUser(ctx, tx, dbsqlc.CreateUserParams{
 		ID:    uid,
 		Email: email,
 	}); err != nil {
@@ -172,7 +179,7 @@ func (h *Handler[T]) handleUserRegistrationTx(
 		return uid, fmt.Errorf("shield/password: failed to register a user: %w", err)
 	}
 
-	if err := q.CreateUserPasswordCredential(ctx, tx, dbsqlc.CreateUserPasswordCredentialParams{
+	if err := dbsqlc.New().CreateUserPasswordCredential(ctx, tx, dbsqlc.CreateUserPasswordCredentialParams{
 		ID:                   uuidv7.Must(),
 		UserID:               uid,
 		UserCredentialKey:    email,
@@ -197,7 +204,8 @@ func (h *Handler[T]) HandleUserLogin(
 	if err != nil {
 		return nil, fmt.Errorf("shield/password: failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	user, err := dbsqlc.New().FindUserWithPasswordCredentialByEmail(
 		ctx,
@@ -218,14 +226,16 @@ func (h *Handler[T]) HandleUserLogin(
 		return nil, shield.ErrUserNotFound
 	}
 
-	// An entry point for hijacking the user login process.
+	// An entry point for hooking the user login process.
 	var payload T
-	if h.config.Hijacker != nil {
-		d("login hijacking is enabled, trying to get payload")
-		payload, err = h.config.Hijacker.HijackUserLogin(ctx, user.ID, tx)
+
+	if h.config.Hooker != nil {
+		d("login hooking is enabled, trying to get payload")
+
+		payload, err = h.config.Hooker.HookUserLogin(ctx, user.ID, tx)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"shield/password: failed to hijack user login: %w",
+				"shield/password: failed to hook user login: %w",
 				err,
 			)
 		}

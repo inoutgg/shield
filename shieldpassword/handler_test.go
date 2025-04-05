@@ -7,15 +7,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.inout.gg/foundations/must"
+
 	"go.inout.gg/shield/internal/testutil"
 )
 
 func TestUserRegistration(t *testing.T) {
-	ctx := context.Background()
-	db := testutil.MustDB(ctx, t)
+	ctx := t.Context()
+	db := testutil.MustDB(t)
 	config := NewConfig[any]()
 	pool := db.Pool()
 	h := NewHandler(pool, config)
+
 	t.Run("register user", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
@@ -35,6 +37,7 @@ func TestUserRegistration(t *testing.T) {
 			CredentialPassword string
 		}{}
 		uid := user.ID.String()
+
 		if err := pool.QueryRow(ctx, `
       SELECT
         "user".email,
@@ -57,16 +60,16 @@ func TestUserRegistration(t *testing.T) {
 		)
 	})
 
-	t.Run("user already exists", func(t *testing.T) {
+	t.Run("user already exists", func(*testing.T) {
 		must.Must1(db.Reset(ctx))
 	})
 }
 
 func TestUserLogin(t *testing.T) {
-	ctx := context.Background()
-	db := testutil.MustDB(ctx, t)
+	ctx := t.Context()
+	db := testutil.MustDB(t)
 
-	t.Run("user not found", func(t *testing.T) {
+	t.Run("user not found", func(*testing.T) {
 		must.Must1(db.Reset(ctx))
 	})
 }

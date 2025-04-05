@@ -9,13 +9,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httperror"
+
 	"go.inout.gg/shield"
 )
 
 var (
+	//nolint:gochecknoglobals
 	FormValidator = shield.DefaultFormValidator
-	FormScrubber  = shield.DefaultFormScrubber
-	FormModifier  = shield.DefaultFormModifier
+
+	//nolint:gochecknoglobals
+	FormScrubber = shield.DefaultFormScrubber
+
+	//nolint:gochecknoglobals
+	FormModifier = shield.DefaultFormModifier
 )
 
 const (
@@ -39,6 +45,7 @@ func (c *HTTPConfig[T]) defaults() {
 	c.FieldLastName = cmp.Or(c.FieldLastName, DefaultFieldEmail)
 	c.FieldEmail = cmp.Or(c.FieldEmail, DefaultFieldEmail)
 	c.FieldPassword = cmp.Or(c.FieldPassword, DefaultFieldEmail)
+
 	if c.Config == nil {
 		c.Config = NewConfig[T]()
 	}
@@ -89,6 +96,7 @@ func NewFormHandler[T any](pool *pgxpool.Pool, config *HTTPConfig[T]) *HTTPHandl
 	if config == nil {
 		config = NewHTTPConfig[T]()
 	}
+
 	config.assert()
 
 	return newHTTPHandler(pool, config, &formParser[T]{config})
@@ -99,6 +107,7 @@ func NewJSONHandler[T any](pool *pgxpool.Pool, config *HTTPConfig[T]) *HTTPHandl
 	if config == nil {
 		config = NewHTTPConfig[T]()
 	}
+
 	config.assert()
 
 	return newHTTPHandler(pool, config, &jsonParser[T]{config})
@@ -108,6 +117,7 @@ func (h *HTTPHandler[T]) parseUserRegistrationData(
 	req *http.Request,
 ) (*UserRegistrationData, error) {
 	ctx := req.Context()
+
 	form, err := h.parser.ParseUserRegistrationData(req)
 	if err != nil {
 		return nil, fmt.Errorf("password: failed to parse request form: %w", err)

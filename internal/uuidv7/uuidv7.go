@@ -2,6 +2,8 @@
 package uuidv7
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"go.inout.gg/foundations/must"
 )
@@ -13,5 +15,10 @@ func Must() uuid.UUID {
 
 // FromString parses a UUID from a string.
 func FromString(s string) (uuid.UUID, error) {
-	return uuid.Parse(s)
+	uid, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("shieldpassword: failed to parse UUID: %w", err)
+	}
+
+	return uid, nil
 }

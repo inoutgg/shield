@@ -8,12 +8,27 @@ import (
 	"go.inout.gg/foundations/must"
 )
 
-var checksumSecret = "really-long-and-super-protected-checksum-secret"
+const checksumSecret = "really-long-and-super-protected-checksum-secret"
 
 var (
-	safeMethods   = []string{http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace}
-	unsafeMethods = []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
-	testHandler   = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	//nolint:gochecknoglobals
+	safeMethods = []string{
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodOptions,
+		http.MethodTrace,
+	}
+
+	//nolint:gochecknoglobals
+	unsafeMethods = []string{
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+	}
+
+	//nolint:gochecknoglobals
+	testHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tok, err := FromRequest(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -40,6 +55,7 @@ func TestMethods(t *testing.T) {
 		}
 
 		response := rr.Result()
+
 		cookies := response.Cookies()
 		if len(cookies) != 1 {
 			t.Fatalf("expected one cookie, got %d", len(cookies))
@@ -73,7 +89,9 @@ func TestSuccessCase(t *testing.T) {
 	mux := http.NewServeMux()
 	middleware := must.Must(Middleware(checksumSecret))
 	route := middleware(mux)
+
 	var tok *Token
+
 	var err error
 
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +105,7 @@ func TestSuccessCase(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	route.ServeHTTP(rr, req)
+
 	if rr.Code != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 	}
@@ -106,7 +125,9 @@ func TestMismatchingTokensFailureCase(t *testing.T) {
 	mux := http.NewServeMux()
 	middleware := must.Must(Middleware(checksumSecret))
 	route := middleware(mux)
+
 	var tok *Token
+
 	var err error
 
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -120,6 +141,7 @@ func TestMismatchingTokensFailureCase(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	route.ServeHTTP(rr, req)
+
 	if rr.Code != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
 	}

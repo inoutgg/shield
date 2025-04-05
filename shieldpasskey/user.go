@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/go-webauthn/webauthn/webauthn"
+
 	"go.inout.gg/shield/internal/dbsqlc"
 )
 

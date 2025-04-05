@@ -1,6 +1,7 @@
 package shieldpassword
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -28,6 +29,7 @@ func NewBcryptPasswordHasher(cost int) PasswordHasher {
 
 func (h *bcryptPasswordHasher) Hash(password string) (string, error) {
 	passwordBytes := []byte(norm.NFKC.String(password))
+
 	hash, err := bcrypt.GenerateFromPassword(passwordBytes, h.cost)
 	if err != nil {
 		return "", fmt.Errorf("shield/password: unable to generate a bcrypt hash: %w", err)
@@ -39,7 +41,7 @@ func (h *bcryptPasswordHasher) Hash(password string) (string, error) {
 func (h *bcryptPasswordHasher) Verify(hashedPassword string, password string) (bool, error) {
 	passwordBytes := []byte(norm.NFKC.String(password))
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), passwordBytes); err != nil {
-		if err == bcrypt.ErrMismatchedHashAndPassword {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return false, nil
 		}
 

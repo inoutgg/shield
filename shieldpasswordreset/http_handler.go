@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httperror"
+
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/shieldpassword"
 	"go.inout.gg/shield/shieldsender"
@@ -37,15 +38,16 @@ type HTTPHandler struct {
 
 // NewHTTPConfig creates a new FormConfig with the given configuration options.
 func NewHTTPConfig(
-	config ...func(*HTTPConfig),
+	opts ...func(*HTTPConfig),
 ) *HTTPConfig {
+	//nolint:exhaustruct
 	cfg := &HTTPConfig{
 		FieldEmail:      DefaultFieldEmail,
 		FieldResetToken: DefaultFieldResetToken,
 		FieldPassword:   DefaultFieldPassword,
 	}
-	for _, f := range config {
-		f(cfg)
+	for _, opt := range opts {
+		opt(cfg)
 	}
 
 	// Set defaults.
@@ -63,9 +65,7 @@ func WithConfig(config *Config) func(*HTTPConfig) {
 	return func(cfg *HTTPConfig) { cfg.Config = config }
 }
 
-// newHTTPHandler creates a new FormHandler with the given configuration.
-//
-// If config is nil, it
+// If config is nil, it.
 func newHTTPHandler(
 	pool *pgxpool.Pool,
 	sender shieldsender.Sender,
@@ -75,6 +75,7 @@ func newHTTPHandler(
 	if config == nil {
 		config = NewHTTPConfig()
 	}
+
 	config.assert()
 
 	h := HTTPHandler{NewHandler(pool, sender, config.Config), config, parser}
@@ -124,6 +125,7 @@ func (h *HTTPHandler) parsePasswordResetRequest(
 // HandlePasswordReset handles a password reset request.
 func (h *HTTPHandler) HandlePasswordReset(req *http.Request) error {
 	ctx := req.Context()
+
 	data, err := h.parsePasswordResetRequest(req)
 	if err != nil {
 		return httperror.FromError(err, http.StatusBadRequest)
@@ -133,6 +135,7 @@ func (h *HTTPHandler) HandlePasswordReset(req *http.Request) error {
 		if errors.Is(err, shield.ErrAuthenticatedUser) {
 			return httperror.FromError(err, http.StatusForbidden)
 		}
+
 		return httperror.FromError(err, http.StatusInternalServerError)
 	}
 
@@ -161,6 +164,7 @@ func (h *HTTPHandler) parsePasswordResetConfirm(
 // HandlePasswordResetConfirm handles a password reset confirmation.
 func (h *HTTPHandler) HandlePasswordResetConfirm(req *http.Request) error {
 	ctx := req.Context()
+
 	form, err := h.parsePasswordResetConfirm(req)
 	if err != nil {
 		return httperror.FromError(err, http.StatusBadRequest)

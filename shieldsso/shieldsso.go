@@ -3,13 +3,15 @@ package shieldsso
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 
 	"go.inout.gg/foundations/must"
-	"go.inout.gg/shield/internal/random"
 	"golang.org/x/oauth2"
+
+	"go.inout.gg/shield/internal/random"
 )
 
 type UserInfo[T any] interface {
@@ -39,8 +41,8 @@ type ProviderState struct {
 
 // HandleAuthorize handles the authorization request to the OpenID provider.
 func HandleAuthorize[T any](
-	ctx context.Context,
-	req *http.Request,
+	_ context.Context,
+	_ *http.Request,
 	provider Provider[T],
 ) (*ProviderState, error) {
 	state := must.Must(random.SecureHexString(32))
@@ -60,16 +62,16 @@ func HandleCallback[T any](
 	req *http.Request,
 	provider Provider[T],
 ) (*ProviderInfo[T], error) {
-	q := parseQuery(req)
+	query := parseQuery(req)
 
-	extError := q.Get("error")
+	extError := query.Get("error")
 	if extError != "" {
 		return nil, fmt.Errorf("shield/sso: external error: %s", extError)
 	}
 
-	code := q.Get("code")
+	code := query.Get("code")
 	if code == "" {
-		return nil, fmt.Errorf("shield/sso: missing authentication code")
+		return nil, errors.New("shield/sso: missing authentication code")
 	}
 
 	token, err := provider.ExchangeCode(ctx, code)

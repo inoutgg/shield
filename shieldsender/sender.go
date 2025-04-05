@@ -4,8 +4,8 @@ import "context"
 
 // Message is a message to be sent.
 type Message struct {
-	Email   string
 	Payload any
+	Email   string
 }
 
 // Sender is an interface for sending email messages.

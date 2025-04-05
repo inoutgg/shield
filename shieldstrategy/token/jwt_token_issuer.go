@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"go.inout.gg/shield"
 )
 
@@ -33,6 +34,7 @@ type ClaimsProducer interface {
 
 // NewJWTTokenIssuer creates a new JWT token issuer.
 func NewJWTTokenIssuer[T any](opts ...func(*JWTTokenIssuerConfig)) *JWTTokenIssuer[T] {
+	//nolint:exhaustruct
 	config := &JWTTokenIssuerConfig{}
 	for _, opt := range opts {
 		opt(config)
@@ -43,14 +45,16 @@ func NewJWTTokenIssuer[T any](opts ...func(*JWTTokenIssuerConfig)) *JWTTokenIssu
 	return &JWTTokenIssuer[T]{config}
 }
 
-func (i *JWTTokenIssuer[T]) Issue(ctx context.Context, user *shield.User[T]) (*Token, error) {
+func (i *JWTTokenIssuer[T]) Issue(_ context.Context, _ *shield.User[T]) (*Token, error) {
 	tok := jwt.NewWithClaims(i.config.Signer, jwt.MapClaims{}, nil)
-	actok, err := tok.SigningString()
+
+	accessTok, err := tok.SigningString()
 	if err != nil {
 		return nil, fmt.Errorf("shieldstrategy/token: failed to create JWT token: %w", err)
 	}
 
 	return &Token{
-		AccessToken: actok,
+		AccessToken:  accessTok,
+		RefreshToken: "",
 	}, nil
 }

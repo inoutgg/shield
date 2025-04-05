@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go.inout.gg/foundations/debug"
+
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/shield/shieldstrategy"
@@ -19,7 +20,7 @@ var _ shieldstrategy.Authenticator[any] = (*tokenStrategy[any])(nil)
 
 var ErrInvalidToken = errors.New("shield/token: invalid token")
 
-var (
+const (
 	DefaultAccessTokenExpiresIn  = time.Minute * 15
 	DefaultRefreshTokenExpiresIn = time.Hour * 24 * 30
 )
@@ -57,15 +58,16 @@ type Config struct {
 }
 
 func NewConfig(opts ...func(*Config)) *Config {
-	c := &Config{}
+	//nolint:exhaustruct
+	cfg := &Config{}
 	for _, opt := range opts {
-		opt(c)
+		opt(cfg)
 	}
 
-	debug.Assert(c.AccessTokenExpiresIn > 0, "access token expiration must be greater than 0")
-	debug.Assert(c.RefreshTokenExpiresIn > 0, "refresh token expiration must be greater than 0")
+	debug.Assert(cfg.AccessTokenExpiresIn > 0, "access token expiration must be greater than 0")
+	debug.Assert(cfg.RefreshTokenExpiresIn > 0, "refresh token expiration must be greater than 0")
 
-	return c
+	return cfg
 }
 
 func (c *Config) defaults() {
@@ -75,20 +77,32 @@ func (c *Config) defaults() {
 
 // New returns a new authenticator that authenticates using a bearer token.
 func New[T any](storage Storage[T], issuer Issuer[T], config *Config) shieldstrategy.Authenticator[T] {
+	if config == nil {
+		//nolint:exhaustruct
+		config = &Config{}
+	}
+
+	config.defaults()
+
 	return &tokenStrategy[T]{storage, issuer, config}
 }
 
-func (t *tokenStrategy[T]) Authenticate(
-	w http.ResponseWriter,
+func (s *tokenStrategy[T]) Authenticate(
+	_ http.ResponseWriter,
 	r *http.Request,
 ) (*shieldstrategy.Session[T], error) {
 	ctx := r.Context()
+
 	token, err := shieldtoken.FromRequest(r)
 	if err != nil {
+		//nolint:wrapcheck
 		return nil, err
 	}
 
-	user, err := t.storage.Retrieve(ctx, Token{AccessToken: token})
+	user, err := s.storage.Retrieve(ctx, Token{
+		AccessToken:  token,
+		RefreshToken: "",
+	})
 	if err != nil {
 		return nil, fmt.Errorf("shield/token: failed to retrieve user: %w", err)
 	}
@@ -97,11 +111,12 @@ func (t *tokenStrategy[T]) Authenticate(
 }
 
 func (s *tokenStrategy[T]) Issue(
-	w http.ResponseWriter,
+	_ http.ResponseWriter,
 	r *http.Request,
 	user *shield.User[T],
 ) (*shieldstrategy.Session[T], error) {
 	ctx := r.Context()
+
 	_, err := s.issuer.Issue(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("shield/token: failed to issue token: %w", err)

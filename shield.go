@@ -19,9 +19,9 @@ const (
 )
 
 var (
-	DefaultFormValidator = validator.New(validator.WithRequiredStructEnabled())
-	DefaultFormScrubber  = scrubbers.New()
-	DefaultFormModifier  = modifiers.New()
+	DefaultFormValidator = validator.New(validator.WithRequiredStructEnabled()) //nolint:gochecknoglobals
+	DefaultFormScrubber  = scrubbers.New()                                      //nolint:gochecknoglobals
+	DefaultFormModifier  = modifiers.New()                                      //nolint:gochecknoglobals
 )
 
 var (
@@ -30,14 +30,10 @@ var (
 	ErrUserNotFound        = errors.New("shield: user not found")
 )
 
+//nolint:gochecknoglobals
 var DefaultLogger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 type User[T any] struct {
-	// ID is the user ID.
+	T  *T
 	ID uuid.UUID
-
-	// T holds additional data.
-	//
-	// Make sure that the data is JSON-serializable.
-	T *T
 }

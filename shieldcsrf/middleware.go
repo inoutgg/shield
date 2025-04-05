@@ -14,35 +14,35 @@ import (
 
 type ctxKey struct{}
 
+//nolint:gochecknoglobals
 var kCtxKey = ctxKey{}
 
 var ErrNoChecksumSecret = errors.New("shield/csrf: checksum secret is not provided")
 
-var (
+const (
 	DefaultFieldName  = "csrf_token"
-	DefaultHeaderName = "X-CSRF-Token"
+	DefaultHeaderName = "X-Csrf-Token"
 	DefaultCookieName = "csrf_token"
 )
 
-var DefaultTokenLength = 32
+const DefaultTokenLength = 32
 
 // Config is the configuration for the CSRF middleware.
 type Config struct {
-	IgnoredMethods []string               // optional (default: [GET, HEAD, OPTIONS, TRACE])
-	ErrorHandler   httperror.ErrorHandler // optional (default: errorhandler.DefaultErrorHandler)
-
+	ErrorHandler   httperror.ErrorHandler
 	ChecksumSecret string
-	TokenLength    int // optional (default: 64)
-
-	HeaderName     string        // optional (default: "X-CSRF-Token")
-	FieldName      string        // optional (default: "csrf_token")
-	CookieName     string        // optional (default: "csrf_token")
-	CookieSameSite http.SameSite // optional (default: http.SameSiteLaxMode)
+	HeaderName     string
+	FieldName      string
+	CookieName     string
+	IgnoredMethods []string
+	TokenLength    int
+	CookieSameSite http.SameSite
 	CookieSecure   bool
 }
 
 // Middleware returns a middleware that adds CSRF token to the request context.
 func Middleware(secret string, config ...func(*Config)) (httpmiddleware.MiddlewareFunc, error) {
+	//nolint:exhaustruct
 	cfg := Config{
 		IgnoredMethods: []string{
 			http.MethodGet,
@@ -73,7 +73,9 @@ func Middleware(secret string, config ...func(*Config)) (httpmiddleware.Middlewa
 				FieldName:      cfg.FieldName,
 				CookieName:     cfg.CookieName,
 				CookieSameSite: cfg.CookieSameSite,
+				CookieSecure:   cfg.CookieSecure,
 			}
+
 			tok, err := newToken(tokConfig)
 			if err != nil {
 				cfg.ErrorHandler.ServeHTTP(w, r, err)
@@ -91,6 +93,7 @@ func Middleware(secret string, config ...func(*Config)) (httpmiddleware.Middlewa
 			if err != nil {
 				err := httperror.FromError(err, http.StatusForbidden, "invalid CSRF token")
 				cfg.ErrorHandler.ServeHTTP(w, r, err)
+
 				return
 			}
 
@@ -108,9 +111,7 @@ func FromRequest(r *http.Request) (*Token, error) {
 func FromContext(ctx context.Context) (*Token, error) {
 	tok, ok := ctx.Value(kCtxKey).(*Token)
 	if !ok {
-		return nil, errors.New(
-			"shield/csrf: unable to retrieve request context. Make sure to use corresponding middleware.",
-		)
+		return nil, errors.New("shield/csrf: unable to retrieve request context")
 	}
 
 	return tok, nil

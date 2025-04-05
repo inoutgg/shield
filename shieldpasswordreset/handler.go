@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/must"
+
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/random"
@@ -24,7 +25,7 @@ import (
 var ErrUsedPasswordResetToken = errors.New("shield/passwordreset: used password reset token")
 
 const (
-	DefaultResetTokenExpiry = time.Duration(12 * time.Hour)
+	DefaultResetTokenExpiry = 12 * time.Hour
 	DefaultResetTokenLength = 32
 )
 
@@ -61,18 +62,19 @@ func (c *Config) assert() {
 
 // NewConfig creates a new config.
 func NewConfig(opts ...func(*Config)) *Config {
-	config := Config{
+	//nolint:exhaustruct
+	config := &Config{
 		TokenExpiryIn: DefaultResetTokenExpiry,
 		TokenLength:   DefaultResetTokenLength,
 	}
 	for _, opt := range opts {
-		opt(&config)
+		opt(config)
 	}
 
 	config.defaults()
 	config.assert()
 
-	return &config
+	return config
 }
 
 // WithPasswordHasher configures the password hasher.
@@ -108,6 +110,7 @@ func NewHandler(pool *pgxpool.Pool, sender shieldsender.Sender, config *Config) 
 	if config == nil {
 		config = NewConfig()
 	}
+
 	config.assert()
 
 	h := Handler{pool, sender, config}
@@ -137,7 +140,8 @@ func (h *Handler) HandlePasswordReset(
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	user, err := queries.FindUserByEmail(ctx, tx, email)
 	if err != nil {
@@ -145,6 +149,7 @@ func (h *Handler) HandlePasswordReset(
 	}
 
 	tokStr := must.Must(random.SecureHexString(h.config.TokenLength))
+
 	tok, err := queries.UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
 		ID:        uuidv7.Must(),
 		Token:     tokStr,
@@ -188,12 +193,13 @@ func (h *Handler) HandlePasswordResetConfirm(
 		return fmt.Errorf("shield/passwordreset: failed to begin transaction: %w", err)
 	}
 
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	tok, err := queries.FindPasswordResetToken(ctx, tx, tokStr)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to find password reset token: %w", err)
 	}
+
 	if tok.IsUsed {
 		return ErrUsedPasswordResetToken
 	}
@@ -208,7 +214,8 @@ func (h *Handler) HandlePasswordResetConfirm(
 	}
 
 	if err := queries.UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-		ID:                   tok.UserID,
+		ID:                   uuidv7.Must(),
+		UserID:               tok.UserID,
 		UserCredentialKey:    user.Email,
 		UserCredentialSecret: passwordHash,
 	}); err != nil {

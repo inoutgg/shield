@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
+
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/random"
@@ -24,12 +25,13 @@ const (
 	DefaultRecoveryCodeLength     = 16
 )
 
+//nolint:gochecknoglobals
 var DefaultGenerator Generator = &generator{}
 
 // Generator provides methods to create a set of unique recovery codes used
 // for 2FA authentication recovery.
 type Generator interface {
-	Generate(count int, len int) ([]string, error)
+	Generate(cnt, l int) ([]string, error)
 }
 
 type generator struct{}
@@ -37,12 +39,12 @@ type generator struct{}
 // Generate creates count number of secure random recovery codes.
 // Each code is length bytes long and encoded as a hex string.
 func (g *generator) Generate(count, length int) ([]string, error) {
-	codes := make([]string, count, count)
+	codes := make([]string, count)
 
 	for i := range count {
 		code, err := random.SecureHexString(length)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("shieldrecoverycode: failed to generate recovery code: %w", err)
 		}
 
 		codes[i] = code
@@ -74,15 +76,16 @@ func (c *Config) assert() {
 }
 
 func NewConfig(opts ...func(*Config)) *Config {
-	c := &Config{}
+	//nolint:exhaustruct
+	cfg := &Config{}
 	for _, opt := range opts {
-		opt(c)
+		opt(cfg)
 	}
 
-	c.defaults()
-	c.assert()
+	cfg.defaults()
+	cfg.assert()
 
-	return c
+	return cfg
 }
 
 type Handler struct {
@@ -109,14 +112,15 @@ func (h *Handler) assert() {
 func (h *Handler) Generate() ([]string, error) {
 	codes, err := h.config.Generator.Generate(h.config.RecoveryCodeTotalCount, h.config.RecoveryCodeLength)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldrecoverycode: failed to generate recovery codes: %w", err)
 	}
 
 	hashedCodes := make([]string, len(codes))
+
 	for i, code := range codes {
 		hashedCode, err := h.config.PasswordHasher.Hash(code)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("shieldrecoverycode: failed to hash recovery code: %w", err)
 		}
 
 		hashedCodes[i] = hashedCode
@@ -125,7 +129,7 @@ func (h *Handler) Generate() ([]string, error) {
 	return hashedCodes, nil
 }
 
-// CreateRecoveryCodes generates a new set of recovery codes
+// CreateRecoveryCodes generates a new set of recovery codes.
 func (h *Handler) CreateRecoveryCodes(ctx context.Context, userID uuid.UUID) error {
 	codes, err := h.Generate()
 	if err != nil {
@@ -136,7 +140,8 @@ func (h *Handler) CreateRecoveryCodes(ctx context.Context, userID uuid.UUID) err
 	if err != nil {
 		return fmt.Errorf("shield/recovery_code: failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := h.CreateRecoveryCodesInTx(ctx, userID, codes, tx); err != nil {
 		return err
@@ -149,10 +154,7 @@ func (h *Handler) CreateRecoveryCodes(ctx context.Context, userID uuid.UUID) err
 	return nil
 }
 
-// ReplaceRecoveryCodes regenerates a new set of recovery codes and replaces
-// any previously unconsumed recovery codes with the newly generated set.
-//
-// userID is the ID of the user to update recovery codes for
+// userID is the ID of the user to update recovery codes for.
 func (h *Handler) ReplaceRecoveryCodes(ctx context.Context, userID, replacedBy uuid.UUID) error {
 	codes, err := h.Generate()
 	if err != nil {
@@ -163,7 +165,8 @@ func (h *Handler) ReplaceRecoveryCodes(ctx context.Context, userID, replacedBy u
 	if err != nil {
 		return fmt.Errorf("shield/recovery_code: failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := h.ReplaceRecoveryCodesInTx(ctx, userID, replacedBy, codes, tx); err != nil {
 		return err

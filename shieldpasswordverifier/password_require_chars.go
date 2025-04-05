@@ -4,11 +4,14 @@ import (
 	"strings"
 
 	"go.inout.gg/foundations/must"
+
 	"go.inout.gg/shield/internal/sliceutil"
 )
 
+//nolint:gochecknoglobals
 var DefaultPasswordRequiredChars PasswordRequiredChars
 
+//nolint:gochecknoinits
 func init() {
 	must.Must1(DefaultPasswordRequiredChars.Parse(""))
 }

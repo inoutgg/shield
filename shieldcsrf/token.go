@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"go.inout.gg/foundations/must"
+
 	"go.inout.gg/shield/internal/random"
 )
 
@@ -23,19 +24,18 @@ var (
 
 type tokenConfig struct {
 	ChecksumSecret string
+	HeaderName     string
+	FieldName      string
+	CookieName     string
 	TokenLength    int
-
-	HeaderName     string // optional (default: "X-CSRF-Token")
-	FieldName      string // optional (default: "csrf_token")
-	CookieName     string // optional (default: "csrf_token")
-	CookieSecure   bool
 	CookieSameSite http.SameSite
+	CookieSecure   bool
 }
 
 func (opt *tokenConfig) cookieName() string {
 	name := opt.CookieName
 	if opt.CookieSecure {
-		name = fmt.Sprintf("__Secure-%s", name)
+		name = "__Secure-" + name
 	}
 
 	return name
@@ -43,9 +43,9 @@ func (opt *tokenConfig) cookieName() string {
 
 // Token implements CSRF token using the double submit cookie pattern.
 type Token struct {
+	config   *tokenConfig
 	value    string
 	checksum string
-	config   *tokenConfig
 }
 
 // newToken returns a new CSRF token.
@@ -53,7 +53,7 @@ type Token struct {
 func newToken(opt *tokenConfig) (*Token, error) {
 	val, err := random.SecureHexString(opt.TokenLength)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldcsrf: failed to create CSRF token: %w", err)
 	}
 
 	checksum := computeChecksum(val, opt.ChecksumSecret)
@@ -136,6 +136,7 @@ func (t *Token) String() string {
 
 // cookie returns an HTTP cookie containing the CSRF token.
 func (t *Token) cookie() *http.Cookie {
+	//nolint:exhaustruct
 	cookie := http.Cookie{
 		Name:     t.config.cookieName(),
 		Value:    t.cookieValue(),
@@ -159,6 +160,7 @@ func decodeCookieValue(val string) (string, string, error) {
 	}
 
 	content := string(bytes)
+
 	parts := strings.Split(content, "|")
 	if len(parts) != 2 {
 		return "", "", ErrInvalidToken
@@ -171,5 +173,6 @@ func decodeCookieValue(val string) (string, string, error) {
 func computeChecksum(val, secret string) string {
 	h := hmac.New(sha256.New, []byte(secret))
 	_ = must.Must(h.Write([]byte(val)))
+
 	return hex.EncodeToString(h.Sum(nil))
 }

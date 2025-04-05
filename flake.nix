@@ -16,10 +16,17 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            # Runtimes
             nodejs
-            go_1_23
+            go
+
+            # Tooling
             sqlc
-            gofumpt
+            golangci-lint
+            just
+
+            # LSP
+            golangci-lint-langserver
           ];
         };
 

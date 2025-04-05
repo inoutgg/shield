@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/http/httpcookie"
 	"go.inout.gg/foundations/http/httperror"
+
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/shielduser"

@@ -2,13 +2,15 @@ package shieldmigrate
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"go.inout.gg/conduit"
+
 	"go.inout.gg/shield/internal/migrations"
 )
 
-var (
+const (
 	DefaultUpStep   = conduit.DefaultUpStep
 	DefaultDownStep = conduit.DefaultDownStep
 )
@@ -47,7 +49,8 @@ func (m *Migrator) Up(ctx context.Context, conn *pgx.Conn, opts *MigrateOptions)
 	}
 
 	_, err := m.base.Migrate(ctx, conduit.DirectionUp, conn, migrateOpts)
-	return err
+
+	return fmt.Errorf("shieldmigate: failed to apply shield migrations: %w", err)
 }
 
 func (m *Migrator) Down(ctx context.Context, conn *pgx.Conn, opts *MigrateOptions) error {
@@ -57,5 +60,6 @@ func (m *Migrator) Down(ctx context.Context, conn *pgx.Conn, opts *MigrateOption
 	}
 
 	_, err := m.base.Migrate(ctx, conduit.DirectionDown, conn, migrateOpts)
-	return err
+
+	return fmt.Errorf("shieldmigate: failed to rollback shield migrations: %w", err)
 }

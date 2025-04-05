@@ -2,6 +2,7 @@ package shieldpassword
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -20,14 +21,14 @@ type HTTPRequestParser interface {
 type UserRegistrationData struct {
 	FirstName string `mod:"trim"`
 	LastName  string `mod:"trim"`
-	Email     string `mod:"trim" validate:"required,email" scrub:"emails"`
-	Password  string `mod:"trim" validate:"required" `
+	Email     string `mod:"trim" scrub:"emails" validate:"required,email"`
+	Password  string `mod:"trim"                validate:"required"`
 }
 
 // UserLoginData is the form for user login.
 type UserLoginData struct {
-	Email    string `mod:"trim" validate:"required,email" scrub:"emails"`
-	Password string `mod:"trim" validate:"required"`
+	Email    string `mod:"trim" scrub:"emails" validate:"required,email"`
+	Password string `mod:"trim"                validate:"required"`
 }
 
 type jsonParser[T any] struct {
@@ -37,7 +38,7 @@ type jsonParser[T any] struct {
 func (p *jsonParser[T]) ParseUserRegistrationData(r *http.Request) (*UserRegistrationData, error) {
 	var m map[string]string
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldpassword: failed to parse JSON data: %w", err)
 	}
 
 	return &UserRegistrationData{
@@ -51,7 +52,7 @@ func (p *jsonParser[T]) ParseUserRegistrationData(r *http.Request) (*UserRegistr
 func (p *jsonParser[T]) ParseUserLoginData(r *http.Request) (*UserLoginData, error) {
 	var m map[string]string
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldpassword: failed to parse JSON data: %w", err)
 	}
 
 	return &UserLoginData{
@@ -66,7 +67,7 @@ type formParser[T any] struct {
 
 func (p *formParser[T]) ParseUserRegistrationData(r *http.Request) (*UserRegistrationData, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldpassword: failed to parse form data: %w", err)
 	}
 
 	return &UserRegistrationData{
@@ -79,7 +80,7 @@ func (p *formParser[T]) ParseUserRegistrationData(r *http.Request) (*UserRegistr
 
 func (p *formParser[T]) ParseUserLoginData(r *http.Request) (*UserLoginData, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldpassword: failed to parse form data: %w", err)
 	}
 
 	return &UserLoginData{

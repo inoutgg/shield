@@ -8,12 +8,14 @@ import (
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httperror"
 	"go.inout.gg/foundations/http/httpmiddleware"
+
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/shieldstrategy"
 )
 
 type ctxKey struct{}
 
+//nolint:gochecknoglobals
 var kCtxKey = ctxKey{}
 
 // Config is the configuration for the middleware.
@@ -27,6 +29,7 @@ type Config struct {
 
 // NewConfig returns a new configuration for Middleware.
 func NewConfig(opts ...func(*Config)) *Config {
+	//nolint:exhaustruct
 	config := Config{}
 	for _, opt := range opts {
 		opt(&config)
@@ -75,7 +78,11 @@ func Middleware[T any](
 					errorHandler.ServeHTTP(
 						w,
 						r,
-						httperror.FromError(err, http.StatusUnauthorized, "unauthorized access"),
+						httperror.FromError(
+							err,
+							http.StatusUnauthorized,
+							"unauthorized access",
+						),
 					)
 
 					return
@@ -95,11 +102,11 @@ func Middleware[T any](
 // provided URL if the user is authenticated.
 //
 // Make sure to use the Middleware before adding this one.
-func RedirectAuthenticatedUserMiddleware(redirectUrl string) httpmiddleware.MiddlewareFunc {
+func RedirectAuthenticatedUserMiddleware(redirectURL string) httpmiddleware.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if IsAuthenticated(r.Context()) {
-				http.Redirect(w, r, redirectUrl, http.StatusTemporaryRedirect)
+				http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 				return
 			}
 

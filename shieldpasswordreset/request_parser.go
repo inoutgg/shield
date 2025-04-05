@@ -2,6 +2,7 @@ package shieldpasswordreset
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -18,7 +19,7 @@ type HTTPRequestParser interface {
 
 // PasswordResetRequestData is the form used to request a password reset.
 type PasswordResetRequestData struct {
-	Email string `mod:"trim" validate:"required,email" scrub:"emails"`
+	Email string `mod:"trim" scrub:"emails" validate:"required,email"`
 }
 
 // PasswordResetConfirmData is the form used to confirm a password reset.
@@ -34,7 +35,7 @@ type jsonParser struct {
 func (p *jsonParser) ParsePasswordResetRequestData(r *http.Request) (*PasswordResetRequestData, error) {
 	var m map[string]string
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldpasswordreset: failed to parse JSON data: %w", err)
 	}
 
 	return &PasswordResetRequestData{
@@ -45,7 +46,7 @@ func (p *jsonParser) ParsePasswordResetRequestData(r *http.Request) (*PasswordRe
 func (p *jsonParser) ParsePasswordResetConfirmData(r *http.Request) (*PasswordResetConfirmData, error) {
 	var m map[string]string
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldpasswordreset: failed to parse JSON data: %w", err)
 	}
 
 	return &PasswordResetConfirmData{
@@ -60,7 +61,7 @@ type formParser struct {
 
 func (p *formParser) ParsePasswordResetRequestData(r *http.Request) (*PasswordResetRequestData, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldpasswordreset: failed to parse form data: %w", err)
 	}
 
 	return &PasswordResetRequestData{
@@ -70,7 +71,7 @@ func (p *formParser) ParsePasswordResetRequestData(r *http.Request) (*PasswordRe
 
 func (p *formParser) ParsePasswordResetConfirmData(r *http.Request) (*PasswordResetConfirmData, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("shieldpasswordreset: failed to parse form data: %w", err)
 	}
 
 	return &PasswordResetConfirmData{

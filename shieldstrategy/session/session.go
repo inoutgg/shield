@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/http/httpcookie"
 	"go.inout.gg/foundations/sqldb"
+
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/uuidv7"
@@ -17,7 +18,7 @@ import (
 
 var _ shieldstrategy.Authenticator[any] = (*sessionStrategy[any])(nil)
 
-var (
+const (
 	DefaultCookieName = "usid"
 	DefaultExpiresIn  = time.Hour * 12
 )
@@ -42,13 +43,10 @@ func New[T any](pool *pgxpool.Pool, opts ...func(*Config)) shieldstrategy.Authen
 	config := &Config{
 		CookieName: DefaultCookieName,
 		ExpiresIn:  DefaultExpiresIn,
+		Logger:     shield.DefaultLogger,
 	}
 	for _, opt := range opts {
 		opt(config)
-	}
-
-	if config.Logger != nil {
-		config.Logger = slog.Default()
 	}
 
 	return &sessionStrategy[T]{config, pool}
@@ -63,6 +61,7 @@ func (s *sessionStrategy[T]) Issue(
 
 	sessionID := uuidv7.Must()
 	expiresAt := time.Now().Add(s.config.ExpiresIn)
+
 	_, err := dbsqlc.New().CreateUserSession(ctx, s.pool, dbsqlc.CreateUserSessionParams{
 		ID:        sessionID,
 		UserID:    user.ID,
@@ -109,22 +108,26 @@ func (s *sessionStrategy[T]) Authenticate(
 	if err != nil {
 		return nil, fmt.Errorf("shield/session: failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	session, err := queries.FindUserSessionByID(ctx, tx, sessionID)
 	if err != nil {
 		if sqldb.IsNotFoundError(err) {
-			s.config.Logger.Error(
+			s.config.Logger.ErrorContext(
+				ctx,
 				"No sessions found with given ID",
 				slog.String("session_id", sessionID.String()),
 				slog.Any("error", err),
 			)
 
 			httpcookie.Delete(w, r, s.config.CookieName)
+
 			return nil, shield.ErrUnauthenticatedUser
 		}
 
-		s.config.Logger.Error(
+		s.config.Logger.ErrorContext(
+			ctx,
 			"Unable to find a session",
 			slog.String("session_id", sessionID.String()),
 			slog.Any("error", err),

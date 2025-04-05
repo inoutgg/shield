@@ -13,6 +13,7 @@ func secureBytes(l int) ([]byte, error) {
 	if err != nil {
 		return bytes, fmt.Errorf("shield: error reading random bytes: %w", err)
 	}
+
 	return bytes, nil
 }
 
@@ -22,5 +23,6 @@ func SecureHexString(l int) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return hex.EncodeToString(bytes), nil
 }
