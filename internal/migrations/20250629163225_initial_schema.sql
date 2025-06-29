@@ -1,4 +1,4 @@
--- migration: 1726948730233_initial_schema.sql
+-- migration: 20250629163225_initial_schema.sql.sql
 
 CREATE TABLE IF NOT EXISTS shield_users (
   id UUID NOT NULL,

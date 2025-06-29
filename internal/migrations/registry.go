@@ -6,8 +6,7 @@ import (
 	"go.inout.gg/conduit/conduitregistry"
 )
 
-//nolint:gochecknoglobals
-var Registry = conduitregistry.New("inout/shield")
+var Registry = conduitregistry.New("inout/shield") //nolint:gochecknoglobals
 
 //go:embed **.sql
 var migrationFS embed.FS

@@ -43,12 +43,12 @@ func (c *Config[T]) assert() {
 	debug.Assert(c.Logger != nil, "Logger must be set")
 }
 
-// Hooker also to hook into the user registration and logging in sessions
+// Hooker allows to hook into the user registration and logging in sessions
 // and perform additional operations.
 type Hooker[T any] interface {
-	// HookUserRegisteration is called when registring a new user.
+	// HookUserRegistration is called when registering a new user.
 	// Use this method to create an additional context for the user.
-	HookUserRegisteration(context.Context, uuid.UUID, pgx.Tx) (T, error)
+	HookUserRegistration(context.Context, uuid.UUID, pgx.Tx) (T, error)
 
 	// HookUserLogin is called when a user is trying to login.
 	// Use this method to fetch additional data from the database for the user.
@@ -141,7 +141,7 @@ func (h *Handler[T]) HandleUserRegistration(
 	if h.config.Hooker != nil {
 		d("registration hooking is enabled, trying to get payload")
 
-		payload, err = h.config.Hooker.HookUserRegisteration(ctx, uid, tx)
+		payload, err = h.config.Hooker.HookUserRegistration(ctx, uid, tx)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"shield/password: failed to hook user registration: %w",

@@ -24,6 +24,8 @@
             sqlc
             golangci-lint
             just
+            typos
+            lefthook
 
             # LSP
             golangci-lint-langserver

@@ -32,9 +32,7 @@ func NewHandler(pool *pgxpool.Pool, config *Config) (*Handler, error) {
 }
 
 func (h *Handler) HandleStartUserLogin(ctx context.Context, email string) error {
-	queries := dbsqlc.New()
-
-	row, err := queries.FindUserWithPasskeyCredentialByEmail(ctx, h.pool, email)
+	row, err := dbsqlc.New().FindUserWithPasskeyCredentialByEmail(ctx, h.pool, email)
 	if err != nil {
 		return fmt.Errorf("shield/passkey: failed to retrieve a user: %w", err)
 	}

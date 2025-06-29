@@ -59,10 +59,10 @@ func HandleAuthorize[T any](
 // HandleCallback handles the callback from the OpenID provider.
 func HandleCallback[T any](
 	ctx context.Context,
-	req *http.Request,
+	r *http.Request,
 	provider Provider[T],
 ) (*ProviderInfo[T], error) {
-	query := parseQuery(req)
+	query := parseQuery(r)
 
 	extError := query.Get("error")
 	if extError != "" {

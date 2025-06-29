@@ -1,4 +1,4 @@
--- migration: 1731842623024_recovery_code.sql
+-- migration: 20250629163307_recovery_code.sql
 
 CREATE TABLE IF NOT EXISTS shield_recovery_codes (
   id UUID NOT NULL,

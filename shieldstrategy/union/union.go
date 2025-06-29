@@ -1,4 +1,4 @@
-// Package union provides an authneticator that sequencially tries to authenticate
+// Package union provides an authneticator that sequentially tries to authenticate
 // user session with provided authenticators.
 package union
 

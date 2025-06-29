@@ -32,7 +32,7 @@ const (
 // Config is the configuration for the password handler.
 //
 // Make sure to use the NewConfig function to create a new config, instead
-// of instatiating the struct directly.
+// of instantiating the struct directly.
 type Config struct {
 	PasswordHasher shieldpassword.PasswordHasher // optional
 	Logger         *slog.Logger                  // optional
@@ -40,7 +40,7 @@ type Config struct {
 	// TokenLength set the length of the reset token.
 	//
 	// Defaults to DefaultResetTokenExpiry.
-	TokenLength int // optinal
+	TokenLength int // optional
 
 	// TokenExpiryIn set the expiry time of the reset token.
 	//
@@ -129,8 +129,6 @@ func (h *Handler) HandlePasswordReset(
 	ctx context.Context,
 	email string,
 ) error {
-	queries := dbsqlc.New()
-
 	// Forbid authorized user access.
 	if shielduser.IsAuthenticated(ctx) {
 		return shield.ErrAuthenticatedUser
@@ -143,14 +141,14 @@ func (h *Handler) HandlePasswordReset(
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	user, err := queries.FindUserByEmail(ctx, tx, email)
+	user, err := dbsqlc.New().FindUserByEmail(ctx, tx, email)
 	if err != nil {
 		return fmt.Errorf("shield/passwordreset: failed to find user: %w", err)
 	}
 
 	tokStr := must.Must(random.SecureHexString(h.config.TokenLength))
 
-	tok, err := queries.UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
+	tok, err := dbsqlc.New().UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
 		ID:        uuidv7.Must(),
 		Token:     tokStr,
 		UserID:    user.ID,

@@ -31,13 +31,13 @@ type sessionStrategy[T any] struct {
 type Config struct {
 	Logger *slog.Logger
 
-	CookieName string        // optinal (default: "usid")
-	ExpiresIn  time.Duration // optinal (default: 12h)
+	CookieName string        // optional (default: "usid")
+	ExpiresIn  time.Duration // optional (default: 12h)
 }
 
 // New creates a new session authenticator.
 //
-// The sesion authenticator uses a DB to store sessions and a cookie to
+// The session authenticator uses a DB to store sessions and a cookie to
 // store the session ID.
 func New[T any](pool *pgxpool.Pool, opts ...func(*Config)) shieldstrategy.Authenticator[T] {
 	config := &Config{
@@ -57,12 +57,10 @@ func (s *sessionStrategy[T]) Issue(
 	r *http.Request,
 	user *shield.User[T],
 ) (*shieldstrategy.Session[T], error) {
-	ctx := r.Context()
-
 	sessionID := uuidv7.Must()
 	expiresAt := time.Now().Add(s.config.ExpiresIn)
 
-	_, err := dbsqlc.New().CreateUserSession(ctx, s.pool, dbsqlc.CreateUserSessionParams{
+	_, err := dbsqlc.New().CreateUserSession(r.Context(), s.pool, dbsqlc.CreateUserSessionParams{
 		ID:        sessionID,
 		UserID:    user.ID,
 		ExpiresAt: expiresAt,
