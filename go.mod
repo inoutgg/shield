@@ -14,7 +14,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.10.0
-	go.inout.gg/conduit v0.1.1
+	go.inout.gg/conduit v0.1.3
 	go.inout.gg/foundations v0.0.0-20250317134313-11fba59fcc30
 	golang.org/x/crypto v0.39.0
 	golang.org/x/oauth2 v0.30.0

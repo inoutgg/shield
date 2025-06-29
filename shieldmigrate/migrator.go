@@ -49,8 +49,11 @@ func (m *Migrator) Up(ctx context.Context, conn *pgx.Conn, opts *MigrateOptions)
 	}
 
 	_, err := m.base.Migrate(ctx, conduit.DirectionUp, conn, migrateOpts)
+	if err != nil {
+		return fmt.Errorf("shieldmigate: failed to apply shield migrations: %w", err)
+	}
 
-	return fmt.Errorf("shieldmigate: failed to apply shield migrations: %w", err)
+	return nil
 }
 
 func (m *Migrator) Down(ctx context.Context, conn *pgx.Conn, opts *MigrateOptions) error {
@@ -60,6 +63,9 @@ func (m *Migrator) Down(ctx context.Context, conn *pgx.Conn, opts *MigrateOption
 	}
 
 	_, err := m.base.Migrate(ctx, conduit.DirectionDown, conn, migrateOpts)
+	if err != nil {
+		return fmt.Errorf("shieldmigrate: failed to rollback shield migrations: %w", err)
+	}
 
-	return fmt.Errorf("shieldmigate: failed to rollback shield migrations: %w", err)
+	return nil
 }
