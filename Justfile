@@ -6,6 +6,7 @@ mod:
     go mod tidy
 
 lint-fix:
+  typos -w
   golangci-lint run --fix ./...
 
 format-sql:

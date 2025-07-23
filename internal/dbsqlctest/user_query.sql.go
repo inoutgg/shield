@@ -13,7 +13,8 @@ import (
 
 const testCreateUser = `-- name: TestCreateUser :one
 INSERT INTO shield_users (id, email, is_email_verified)
-VALUES ($1, $2, $3) RETURNING id, created_at, updated_at, email, is_email_verified
+VALUES ($1, $2, $3)
+RETURNING id, created_at, updated_at, email, is_email_verified
 `
 
 type TestCreateUserParams struct {

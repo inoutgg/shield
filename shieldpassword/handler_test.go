@@ -16,7 +16,7 @@ func TestUserRegistration(t *testing.T) {
 	db := testutil.MustDB(t)
 	config := NewConfig[any]()
 	pool := db.Pool()
-	h := NewHandler(pool, config)
+	h := NewHandler[any, any](pool, nil, nil, config)
 
 	t.Run("register user", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -25,7 +25,11 @@ func TestUserRegistration(t *testing.T) {
 		must.Must1(db.Reset(ctx))
 
 		// Act
-		user, err := h.HandleUserRegistration(ctx, "test@test.org", "test")
+		user, err := h.HandleUserRegistration(
+			ctx,
+			"test@test.org",
+			"test",
+		)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -56,7 +60,12 @@ func TestUserRegistration(t *testing.T) {
 		assert.NotEmpty(t, actual.CredentialPassword)
 		assert.True(
 			t,
-			must.Must(h.config.PasswordHasher.Verify(actual.CredentialPassword, "test")),
+			must.Must(
+				h.config.PasswordHasher.Verify(
+					actual.CredentialPassword,
+					"test",
+				),
+			),
 		)
 	})
 

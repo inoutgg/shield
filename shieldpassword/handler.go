@@ -11,58 +11,62 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
+	"go.inout.gg/foundations/pointer"
 	"go.inout.gg/foundations/sqldb"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/shield/shieldpasswordverifier"
-	"go.inout.gg/shield/shielduser"
+	"go.inout.gg/shield/shieldsender"
+	"go.inout.gg/shield/shieldsession"
 )
 
 var (
-	ErrEmailAlreadyTaken = errors.New("shield/password: email already taken")
+	ErrEmailAlreadyTaken = errors.New(
+		"shield/password: email already taken",
+	)
 	ErrPasswordIncorrect = errors.New("shield/password: password incorrect")
 )
 
 // Config is the configuration for the password handler.
-type Config[T any] struct {
+type Config[U any] struct {
 	Logger           *slog.Logger
 	PasswordHasher   PasswordHasher
 	PasswordVerifier shieldpasswordverifier.PasswordVerifier
-	Hooker           Hooker[T]
+	Hooker           Hooker[U]
 }
 
-func (c *Config[T]) defaults() {
+func (c *Config[U]) defaults() {
 	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
 	c.PasswordHasher = cmp.Or(c.PasswordHasher, DefaultPasswordHasher)
 }
 
-func (c *Config[T]) assert() {
+func (c *Config[U]) assert() {
 	debug.Assert(c.PasswordHasher != nil, "PasswordHasher must be set")
 	debug.Assert(c.Logger != nil, "Logger must be set")
 }
 
 // Hooker allows to hook into the user registration and logging in sessions
 // and perform additional operations.
-type Hooker[T any] interface {
-	// HookUserRegistration is called when registering a new user.
+type Hooker[U any] interface {
+	// OnUserRegistration is called when registering a new user.
 	// Use this method to create an additional context for the user.
-	HookUserRegistration(context.Context, uuid.UUID, pgx.Tx) (T, error)
+	OnUserRegistration(context.Context, uuid.UUID, pgx.Tx) (U, error)
 
-	// HookUserLogin is called when a user is trying to login.
+	// OnUserLogin is called when a user is trying to login.
 	// Use this method to fetch additional data from the database for the user.
 	//
 	// Note that the user password is not verified at this moment yet.
-	HookUserLogin(context.Context, uuid.UUID, pgx.Tx) (T, error)
+	OnUserLogin(context.Context, uuid.UUID, pgx.Tx) (U, error)
 }
 
 // NewConfig creates a new config.
 //
 // If no password hasher is configured, the DefaultPasswordHasher will be used.
-func NewConfig[T any](opts ...func(*Config[T])) *Config[T] {
+func NewConfig[U any](opts ...func(*Config[U])) *Config[U] {
 	//nolint:exhaustruct
-	config := Config[T]{}
+	config := Config[U]{}
 	for _, opt := range opts {
 		opt(&config)
 	}
@@ -77,73 +81,195 @@ func NewConfig[T any](opts ...func(*Config[T])) *Config[T] {
 //
 // When setting a password hasher make sure to set it across all modules,
 // i.e., user registration, password reset and password verification.
-func WithPasswordHasher[T any](hasher PasswordHasher) func(*Config[T]) {
-	return func(cfg *Config[T]) { cfg.PasswordHasher = hasher }
+func WithPasswordHasher[U any](hasher PasswordHasher) func(*Config[U]) {
+	return func(cfg *Config[U]) { cfg.PasswordHasher = hasher }
 }
 
-func WithHooker[T any](hooker Hooker[T]) func(*Config[T]) {
-	return func(cfg *Config[T]) { cfg.Hooker = hooker }
+func WithHooker[U any](hooker Hooker[U]) func(*Config[U]) {
+	return func(cfg *Config[U]) { cfg.Hooker = hooker }
 }
 
-type Handler[T any] struct {
-	pool   *pgxpool.Pool
-	config *Config[T]
+type Handler[U, S any] struct {
+	pool          *pgxpool.Pool
+	config        *Config[U]
+	authenticator shieldsession.Authenticator[U, S]
+	sender        shieldsender.Sender
 }
 
-func NewHandler[T any](pool *pgxpool.Pool, config *Config[T]) *Handler[T] {
+// It provides functionality to.
+func NewHandler[U, S any](
+	pool *pgxpool.Pool,
+	authenticator shieldsession.Authenticator[U, S],
+	sender shieldsender.Sender,
+	config *Config[U],
+) *Handler[U, S] {
 	if config == nil {
-		config = NewConfig[T]()
+		config = NewConfig[U]()
 	}
 
 	config.assert()
 
-	h := Handler[T]{pool, config}
-	h.assert()
+	h := Handler[U, S]{
+		pool:          pool,
+		config:        config,
+		authenticator: authenticator,
+		sender:        sender,
+	}
+
+	debug.Assert(h.pool != nil, "Logger must be set")
 
 	return &h
 }
 
-func (h *Handler[T]) assert() {
-	debug.Assert(h.pool != nil, "Logger must be set")
+// HandleChangeUserPassword changes a user password to a provided newPassword, if
+// the current set password matching oldPassword.
+//
+// The user ID is expected to be provide via a session assigned to a passed ctx context.
+//
+// If no password was previously set for a user a new credential will be created.
+func (h *Handler[_, S]) HandleChangeUserPassword(
+	ctx context.Context,
+	oldPassword, newPassword string,
+) error {
+	sess, err := shieldsession.FromContext[S](ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"shield/password: failed to retrieve session from the context: %w",
+			err,
+		)
+	}
+
+	// Make sure that the password hashing is performed outside of the transaction
+	// as it is an expensive operation.
+	passwordHash, err := h.config.PasswordHasher.Hash(newPassword)
+	if err != nil {
+		return fmt.Errorf(
+			"shield/password: failed to hash password: %w",
+			err,
+		)
+	}
+
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"shield/password: failed to begin transaction: %w",
+			err,
+		)
+	}
+
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	dbUser, err := dbsqlc.New().
+		FindUserWithPasswordCredentialByUserID(ctx, tx, sess.UserID)
+	if err != nil {
+		return fmt.Errorf(
+			"shield/password: failed to retrieve users credentials: %w",
+			err,
+		)
+	}
+
+	if dbUser.PasswordHash == nil && oldPassword == "" {
+		if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
+			ID:                   uuidv7.Must(),
+			UserID:               dbUser.ID,
+			UserCredentialKey:    dbUser.Email,
+			UserCredentialSecret: passwordHash,
+		}); err != nil {
+			return fmt.Errorf(
+				"shield/password: failed to create user credential: %w",
+				err,
+			)
+		}
+
+		d(
+			"created a new user password credential for the user with ID: %v",
+			dbUser.ID,
+		)
+	} else {
+		ok, err := h.config.PasswordHasher.Verify(pointer.ToValue(dbUser.PasswordHash, ""), oldPassword)
+		if err != nil {
+			return fmt.Errorf("shield/password: failed to verify password: %w", err)
+		}
+
+		if !ok {
+			d("password mismatch")
+			return ErrPasswordIncorrect
+		}
+	}
+
+	err = h.authenticator.ExpireSessions(ctx, tx)
+	if err != nil {
+		if !errors.Is(err, errors.ErrUnsupported) {
+			return fmt.Errorf(
+				"shield/password: failed to expire sessions: %w",
+				err,
+			)
+		}
+
+		d(
+			"session expiration feature is not supported by a given authenticator",
+		)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf(
+			"shield/password: failed to register a user: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
-func (h *Handler[T]) HandleUserRegistration(
+func (h *Handler[U, _]) HandleUserRegistration(
 	ctx context.Context,
 	email, password string,
-) (*shield.User[T], error) {
+) (shield.User[U], error) {
+	var user shield.User[U]
+
 	// Forbid authorized user access.
-	if shielduser.IsAuthenticated(ctx) {
-		return nil, shield.ErrAuthenticatedUser
+	if shieldsession.IsAuthenticated(ctx) {
+		return user, shield.ErrAuthenticatedUser
 	}
 
 	// Make sure that the password hashing is performed outside of the transaction
 	// as it is an expensive operation.
 	passwordHash, err := h.config.PasswordHasher.Hash(password)
 	if err != nil {
-		return nil, fmt.Errorf("shield/password: failed to hash password: %w", err)
+		return user, fmt.Errorf(
+			"shield/password: failed to hash password: %w",
+			err,
+		)
 	}
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("shield/password: failed to begin transaction: %w", err)
+		return user, fmt.Errorf(
+			"shield/password: failed to begin transaction: %w",
+			err,
+		)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	uid, err := h.handleUserRegistrationTx(ctx, email, passwordHash, tx)
+	userID, err := h.handleUserRegistrationTx(ctx, email, passwordHash, tx)
 	if err != nil {
-		return nil, err
+		return user, err
 	}
 
 	// An entry point for hooking the user registration process.
-	var payload T
+	var payload U
 
 	if h.config.Hooker != nil {
 		d("registration hooking is enabled, trying to get payload")
 
-		payload, err = h.config.Hooker.HookUserRegistration(ctx, uid, tx)
+		payload, err = h.config.Hooker.OnUserRegistration(
+			ctx,
+			userID,
+			tx,
+		)
 		if err != nil {
-			return nil, fmt.Errorf(
+			return user, fmt.Errorf(
 				"shield/password: failed to hook user registration: %w",
 				err,
 			)
@@ -151,16 +277,19 @@ func (h *Handler[T]) HandleUserRegistration(
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("shield/password: failed to register a user: %w", err)
+		return user, fmt.Errorf(
+			"shield/password: failed to register a user: %w",
+			err,
+		)
 	}
 
-	return &shield.User[T]{
-		ID: uid,
-		T:  &payload,
-	}, nil
+	user.ID = userID
+	user.T = &payload
+
+	return user, nil
 }
 
-func (h *Handler[T]) handleUserRegistrationTx(
+func (h *Handler[U, _]) handleUserRegistrationTx(
 	ctx context.Context,
 	email, passwordHash string,
 	tx pgx.Tx,
@@ -176,65 +305,79 @@ func (h *Handler[T]) handleUserRegistrationTx(
 			return uid, ErrEmailAlreadyTaken
 		}
 
-		return uid, fmt.Errorf("shield/password: failed to register a user: %w", err)
+		return uid, fmt.Errorf(
+			"shield/password: failed to register a user: %w",
+			err,
+		)
 	}
 
-	if err := dbsqlc.New().CreateUserPasswordCredential(ctx, tx, dbsqlc.CreateUserPasswordCredentialParams{
+	if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
 		ID:                   uuidv7.Must(),
 		UserID:               uid,
 		UserCredentialKey:    email,
 		UserCredentialSecret: passwordHash,
 	}); err != nil {
-		return uid, fmt.Errorf("shield/password: failed to register a user: %w", err)
+		return uid, fmt.Errorf(
+			"shield/password: failed to register a user: %w",
+			err,
+		)
 	}
 
 	return uid, nil
 }
 
-func (h *Handler[T]) HandleUserLogin(
+func (h *Handler[U, _]) HandleUserLogin(
 	ctx context.Context,
 	email, password string,
-) (*shield.User[T], error) {
+) (shield.User[U], error) {
+	var user shield.User[U]
+
 	// Forbid authorized user access.
-	if shielduser.IsAuthenticated(ctx) {
-		return nil, shield.ErrAuthenticatedUser
+	if shieldsession.IsAuthenticated(ctx) {
+		return user, shield.ErrAuthenticatedUser
 	}
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("shield/password: failed to begin transaction: %w", err)
+		return user, fmt.Errorf(
+			"shield/password: failed to begin transaction: %w",
+			err,
+		)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	user, err := dbsqlc.New().FindUserWithPasswordCredentialByEmail(
+	dbUser, err := dbsqlc.New().FindUserWithPasswordCredentialByEmail(
 		ctx,
 		tx,
 		email,
 	)
 	if err != nil {
 		if sqldb.IsNotFoundError(err) {
-			return nil, shield.ErrUserNotFound
+			return user, shield.ErrUserNotFound
 		}
 
-		return nil, fmt.Errorf("shield/password: failed to find user: %w", err)
+		return user, fmt.Errorf(
+			"shield/password: failed to find user: %w",
+			err,
+		)
 	}
 
 	// Treat the empty password as a non-existing user/credential.
-	if user.PasswordHash == "" {
+	if dbUser.PasswordHash == "" {
 		d("empty password in db")
-		return nil, shield.ErrUserNotFound
+		return user, shield.ErrUserNotFound
 	}
 
 	// An entry point for hooking the user login process.
-	var payload T
+	var payload U
 
 	if h.config.Hooker != nil {
 		d("login hooking is enabled, trying to get payload")
 
-		payload, err = h.config.Hooker.HookUserLogin(ctx, user.ID, tx)
+		payload, err = h.config.Hooker.OnUserLogin(ctx, user.ID, tx)
 		if err != nil {
-			return nil, fmt.Errorf(
+			return user, fmt.Errorf(
 				"shield/password: failed to hook user login: %w",
 				err,
 			)
@@ -243,21 +386,27 @@ func (h *Handler[T]) HandleUserLogin(
 
 	// Make sure that the password hashing is performed outside of the transaction.
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("shield/password: failed to login a user: %w", err)
+		return user, fmt.Errorf(
+			"shield/password: failed to login a user: %w",
+			err,
+		)
 	}
 
-	ok, err := h.config.PasswordHasher.Verify(user.PasswordHash, password)
+	ok, err := h.config.PasswordHasher.Verify(dbUser.PasswordHash, password)
 	if err != nil {
-		return nil, fmt.Errorf("shield/password: failed to verify password: %w", err)
+		return user, fmt.Errorf(
+			"shield/password: failed to verify password: %w",
+			err,
+		)
 	}
 
 	if !ok {
 		d("password mismatch")
-		return nil, ErrPasswordIncorrect
+		return user, ErrPasswordIncorrect
 	}
 
-	return &shield.User[T]{
-		ID: user.ID,
-		T:  &payload,
-	}, nil
+	user.ID = dbUser.ID
+	user.T = &payload
+
+	return user, nil
 }

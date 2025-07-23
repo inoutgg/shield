@@ -17,7 +17,10 @@ func Must() uuid.UUID {
 func FromString(s string) (uuid.UUID, error) {
 	uid, err := uuid.Parse(s)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("shieldpassword: failed to parse UUID: %w", err)
+		return uuid.Nil, fmt.Errorf(
+			"shieldpassword: failed to parse UUID: %w",
+			err,
+		)
 	}
 
 	return uid, nil

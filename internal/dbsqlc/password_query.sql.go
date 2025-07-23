@@ -12,33 +12,19 @@ import (
 	"github.com/google/uuid"
 )
 
-const createUserPasswordCredential = `-- name: CreateUserPasswordCredential :exec
-INSERT INTO shield_user_credentials
-  (id, name, user_id, user_credential_key, user_credential_secret)
-VALUES
-  (
-    $1::UUID,
-    'password',
-    $2::UUID,
-    $3,
-    $4
-  )
+const changePasswordCredentialEmailByUserID = `-- name: ChangePasswordCredentialEmailByUserID :exec
+UPDATE shield_user_credentials
+SET user_credential_key = $1
+WHERE user_id = $2 AND name = 'password'
 `
 
-type CreateUserPasswordCredentialParams struct {
-	ID                   uuid.UUID
-	UserID               uuid.UUID
-	UserCredentialKey    string
-	UserCredentialSecret string
+type ChangePasswordCredentialEmailByUserIDParams struct {
+	Email  string
+	UserID uuid.UUID
 }
 
-func (q *Queries) CreateUserPasswordCredential(ctx context.Context, db DBTX, arg CreateUserPasswordCredentialParams) error {
-	_, err := db.Exec(ctx, createUserPasswordCredential,
-		arg.ID,
-		arg.UserID,
-		arg.UserCredentialKey,
-		arg.UserCredentialSecret,
-	)
+func (q *Queries) ChangePasswordCredentialEmailByUserID(ctx context.Context, db DBTX, arg ChangePasswordCredentialEmailByUserIDParams) error {
+	_, err := db.Exec(ctx, changePasswordCredentialEmailByUserID, arg.Email, arg.UserID)
 	return err
 }
 
@@ -105,6 +91,49 @@ type FindUserWithPasswordCredentialByEmailRow struct {
 func (q *Queries) FindUserWithPasswordCredentialByEmail(ctx context.Context, db DBTX, email string) (FindUserWithPasswordCredentialByEmailRow, error) {
 	row := db.QueryRow(ctx, findUserWithPasswordCredentialByEmail, email)
 	var i FindUserWithPasswordCredentialByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.IsEmailVerified,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
+const findUserWithPasswordCredentialByUserID = `-- name: FindUserWithPasswordCredentialByUserID :one
+WITH
+    "user" AS (
+    SELECT id, created_at, updated_at, email, is_email_verified
+    FROM shield_users
+    WHERE id = $1::UUID
+    ),
+  credential AS (
+    SELECT user_credential_key, user_credential_secret, user_id
+    FROM shield_user_credentials
+    WHERE name = 'password' AND user_credential_key = "user".email
+  )
+SELECT "user".id, "user".created_at, "user".updated_at, "user".email, "user".is_email_verified, credential.user_credential_secret AS password_hash
+FROM
+  "user"
+  -- validate that the credential and user has the same email address.
+  LEFT JOIN credential
+    ON credential.user_id = "user".id
+`
+
+type FindUserWithPasswordCredentialByUserIDRow struct {
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Email           string
+	IsEmailVerified bool
+	PasswordHash    *string
+}
+
+func (q *Queries) FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID uuid.UUID) (FindUserWithPasswordCredentialByUserIDRow, error) {
+	row := db.QueryRow(ctx, findUserWithPasswordCredentialByUserID, userID)
+	var i FindUserWithPasswordCredentialByUserIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

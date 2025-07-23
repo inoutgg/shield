@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS shield_user_email_verification_tokens (
   UNIQUE (token),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS shield_user_credentials (
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS shield_user_credentials (
   UNIQUE (name, user_id),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS shield_password_reset_tokens (

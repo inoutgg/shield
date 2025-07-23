@@ -10,9 +10,7 @@ SELECT * FROM shield_users WHERE email = @email LIMIT 1;
 
 -- name: ChangeUserEmailByID :exec
 UPDATE shield_users
-SET
-  email = @email,
-  is_email_verified = FALSE
+SET email = @email
 WHERE id = @id;
 
 -- name: UpsertEmailVerificationToken :one

@@ -7,6 +7,7 @@ sql:
       - "internal/dbsqlc/passkey_query.sql"
       - "internal/dbsqlc/recovery_code_query.sql"
       - "internal/dbsqlc/user_query.sql"
+      - "internal/dbsqlc/mfa_query.sql"
     engine: "postgresql"
     gen:
       go:
@@ -34,6 +35,7 @@ sql:
     queries:
       - "internal/dbsqlctest/user_query.sql"
       - "internal/dbsqlctest/password_query.sql"
+      - "internal/dbsqlctest/mfa_query.sql"
     engine: "postgresql"
     gen:
       go:

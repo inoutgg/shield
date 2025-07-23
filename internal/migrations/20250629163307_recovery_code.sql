@@ -11,10 +11,14 @@ CREATE TABLE IF NOT EXISTS shield_recovery_codes (
   evicted_at TIMESTAMP WITH TIME ZONE NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
-    ON DELETE CASCADE,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   FOREIGN KEY (evicted_by) REFERENCES shield_users (id)
     ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
+
+CREATE INDEX src_user_id_idx ON shield_recovery_codes (user_id);
 
 ---- create above / drop below ----
 

@@ -8,4 +8,5 @@ VALUES
     @user_id::UUID,
     @user_credential_key,
     @user_credential_secret
-  ) RETURNING *;
+  )
+RETURNING *;

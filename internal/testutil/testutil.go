@@ -17,7 +17,13 @@ var migrator = shieldmigrate.New()
 func MustDB(t *testing.T) *sqldbtest.DB {
 	t.Helper()
 
-	return sqldbtest.Must(t.Context(), t, sqldbtest.WithUp(func(ctx context.Context, conn *pgx.Conn) error {
-		return migrator.Up(ctx, conn, nil)
-	}))
+	return sqldbtest.Must(
+		t.Context(),
+		t,
+		sqldbtest.WithUp(
+			func(ctx context.Context, conn *pgx.Conn) error {
+				return migrator.Up(ctx, conn, nil)
+			},
+		),
+	)
 }

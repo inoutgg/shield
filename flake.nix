@@ -27,6 +27,8 @@
             typos
             lefthook
 
+            mockgen
+
             # LSP
             golangci-lint-langserver
           ];

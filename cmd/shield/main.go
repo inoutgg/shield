@@ -16,11 +16,16 @@ import (
 func main() {
 	_ = dotenv.Load()
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGTERM,
+	)
 
-	migrator := conduit.NewMigrator(conduit.NewConfig(func(c *conduit.Config) {
-		c.Registry = migrations.Registry
-	}))
+	migrator := conduit.NewMigrator(
+		conduit.NewConfig(func(c *conduit.Config) {
+			c.Registry = migrations.Registry
+		}),
+	)
 
 	if err := conduitcli.Execute(ctx, migrator); err != nil {
 		cancel()

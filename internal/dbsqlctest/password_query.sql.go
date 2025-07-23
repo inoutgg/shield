@@ -21,7 +21,8 @@ VALUES
     $2::UUID,
     $3,
     $4
-  ) RETURNING id, created_at, updated_at, name, user_id, user_credential_key, user_credential_secret
+  )
+RETURNING id, created_at, updated_at, name, user_id, user_credential_key, user_credential_secret
 `
 
 type TestCreatePasswordParams struct {

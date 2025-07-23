@@ -13,9 +13,7 @@ import (
 
 const changeUserEmailByID = `-- name: ChangeUserEmailByID :exec
 UPDATE shield_users
-SET
-  email = $1,
-  is_email_verified = FALSE
+SET email = $1
 WHERE id = $2
 `
 

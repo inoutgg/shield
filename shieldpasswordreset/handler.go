@@ -18,11 +18,13 @@ import (
 	"go.inout.gg/shield/internal/uuidv7"
 	"go.inout.gg/shield/shieldpassword"
 	"go.inout.gg/shield/shieldsender"
-	"go.inout.gg/shield/shielduser"
+	"go.inout.gg/shield/shieldsession"
 )
 
 // ErrUsedPasswordResetToken is returned when the password reset token has already been used.
-var ErrUsedPasswordResetToken = errors.New("shield/passwordreset: used password reset token")
+var ErrUsedPasswordResetToken = errors.New(
+	"shield/passwordreset: used password reset token",
+)
 
 const (
 	DefaultResetTokenExpiry = 12 * time.Hour
@@ -52,7 +54,10 @@ func (c *Config) defaults() {
 	c.TokenExpiryIn = cmp.Or(c.TokenExpiryIn, DefaultResetTokenExpiry)
 	c.TokenLength = cmp.Or(c.TokenLength, DefaultResetTokenLength)
 	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
-	c.PasswordHasher = cmp.Or(c.PasswordHasher, shieldpassword.DefaultPasswordHasher)
+	c.PasswordHasher = cmp.Or(
+		c.PasswordHasher,
+		shieldpassword.DefaultPasswordHasher,
+	)
 }
 
 func (c *Config) assert() {
@@ -90,9 +95,6 @@ type PasswordResetRequestMessagePayload struct {
 	Token string
 }
 
-// PasswordResetSuccessMessagePayload is the payload for the password reset success message.
-type PasswordResetSuccessMessagePayload struct{}
-
 // Handler handles password reset requests.
 //
 // It is a general enough implementation so it can be used for different
@@ -106,7 +108,11 @@ type Handler struct {
 	config *Config
 }
 
-func NewHandler(pool *pgxpool.Pool, sender shieldsender.Sender, config *Config) *Handler {
+func NewHandler(
+	pool *pgxpool.Pool,
+	sender shieldsender.Sender,
+	config *Config,
+) *Handler {
 	if config == nil {
 		config = NewConfig()
 	}
@@ -130,45 +136,62 @@ func (h *Handler) HandlePasswordReset(
 	email string,
 ) error {
 	// Forbid authorized user access.
-	if shielduser.IsAuthenticated(ctx) {
+	if shieldsession.IsAuthenticated(ctx) {
 		return shield.ErrAuthenticatedUser
 	}
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to begin transaction: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to begin transaction: %w",
+			err,
+		)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	user, err := dbsqlc.New().FindUserByEmail(ctx, tx, email)
 	if err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to find user: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to find user: %w",
+			err,
+		)
 	}
 
 	tokStr := must.Must(random.SecureHexString(h.config.TokenLength))
 
-	tok, err := dbsqlc.New().UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
-		ID:        uuidv7.Must(),
-		Token:     tokStr,
-		UserID:    user.ID,
-		ExpiresAt: time.Now().Add(h.config.TokenExpiryIn),
-	})
+	tok, err := dbsqlc.New().
+		UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
+			ID:        uuidv7.Must(),
+			Token:     tokStr,
+			UserID:    user.ID,
+			ExpiresAt: time.Now().Add(h.config.TokenExpiryIn),
+		})
 	if err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to upsert password reset token: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to upsert password reset token: %w",
+			err,
+		)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to commit transaction: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to commit transaction: %w",
+			err,
+		)
 	}
 
 	if err := h.sender.Send(ctx, shieldsender.Message{
 		Email: user.Email,
+		Key:   shieldsender.MessageKeyPasswordResetRequest,
 		Payload: PasswordResetRequestMessagePayload{
 			Token: tok.Token,
 		},
 	}); err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to send password reset token: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to send password reset token: %w",
+			err,
+		)
 	}
 
 	return nil
@@ -178,62 +201,91 @@ func (h *Handler) HandlePasswordResetConfirm(
 	ctx context.Context,
 	password, tokStr string,
 ) error {
-	queries := dbsqlc.New()
-
-	// Hashing password before tx to avoid unnecessary database delay.
+	// Hash password before tx to avoid unnecessary database delay.
 	passwordHash, err := h.config.PasswordHasher.Hash(password)
 	if err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to hash password: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to hash password: %w",
+			err,
+		)
 	}
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to begin transaction: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to begin transaction: %w",
+			err,
+		)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	tok, err := queries.FindPasswordResetToken(ctx, tx, tokStr)
+	tok, err := dbsqlc.New().FindPasswordResetToken(ctx, tx, tokStr)
 	if err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to find password reset token: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to find password reset token: %w",
+			err,
+		)
 	}
 
 	if tok.IsUsed {
 		return ErrUsedPasswordResetToken
 	}
 
-	user, err := queries.FindUserByID(ctx, tx, tok.UserID)
+	user, err := dbsqlc.New().FindUserByID(ctx, tx, tok.UserID)
 	if err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to find user: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to find user: %w",
+			err,
+		)
 	}
 
-	if err := queries.MarkPasswordResetTokenAsUsed(ctx, tx, tok.Token); err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to mark password reset token as used: %w", err)
+	if err := dbsqlc.New().MarkPasswordResetTokenAsUsed(ctx, tx, tok.Token); err != nil {
+		return fmt.Errorf(
+			"shield/passwordreset: failed to mark password reset token as used: %w",
+			err,
+		)
 	}
 
-	if err := queries.UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
+	if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
 		ID:                   uuidv7.Must(),
 		UserID:               tok.UserID,
 		UserCredentialKey:    user.Email,
 		UserCredentialSecret: passwordHash,
 	}); err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to set user password: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to set user password: %w",
+			err,
+		)
 	}
 
 	// Once password is changed, we need to expire all sessions for this user.
-	if _, err := queries.ExpireAllSessionsByUserID(ctx, tx, user.ID); err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to expire sessions: %w", err)
+	if _, err := dbsqlc.New().ExpireAllSessionsByUserID(ctx, tx, dbsqlc.ExpireAllSessionsByUserIDParams{
+		UserID:    user.ID,
+		EvictedBy: user.ID,
+	}); err != nil {
+		return fmt.Errorf(
+			"shield/passwordreset: failed to expire sessions: %w",
+			err,
+		)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to commit transaction: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to commit transaction: %w",
+			err,
+		)
 	}
 
 	if err := h.sender.Send(ctx, shieldsender.Message{
 		Email:   user.Email,
-		Payload: PasswordResetSuccessMessagePayload{},
+		Key:     shieldsender.MessageKeyPasswordResetSuccess,
+		Payload: nil,
 	}); err != nil {
-		return fmt.Errorf("shield/passwordreset: failed to send success message: %w", err)
+		return fmt.Errorf(
+			"shield/passwordreset: failed to send success message: %w",
+			err,
+		)
 	}
 
 	return nil

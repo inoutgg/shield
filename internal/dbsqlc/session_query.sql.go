@@ -12,20 +12,60 @@ import (
 	"github.com/google/uuid"
 )
 
+const allActiveSessions = `-- name: AllActiveSessions :many
+SELECT id, created_at, updated_at, expires_at, user_id, evicted_by, is_mfa_required
+FROM shield_user_sessions
+WHERE user_id = $1 AND expires_at > NOW()
+`
+
+func (q *Queries) AllActiveSessions(ctx context.Context, db DBTX, userID uuid.UUID) ([]ShieldUserSession, error) {
+	rows, err := db.Query(ctx, allActiveSessions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShieldUserSession
+	for rows.Next() {
+		var i ShieldUserSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ExpiresAt,
+			&i.UserID,
+			&i.EvictedBy,
+			&i.IsMfaRequired,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createUserSession = `-- name: CreateUserSession :one
-INSERT INTO shield_user_sessions (id, user_id, expires_at)
-VALUES ($1::UUID, $2::UUID, $3)
+INSERT INTO shield_user_sessions (id, user_id, expires_at, is_mfa_required)
+VALUES ($1, $2, $3, $4)
 RETURNING id
 `
 
 type CreateUserSessionParams struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	ExpiresAt time.Time
+	ID            uuid.UUID
+	UserID        uuid.UUID
+	ExpiresAt     time.Time
+	IsMfaRequired bool
 }
 
 func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (uuid.UUID, error) {
-	row := db.QueryRow(ctx, createUserSession, arg.ID, arg.UserID, arg.ExpiresAt)
+	row := db.QueryRow(ctx, createUserSession,
+		arg.ID,
+		arg.UserID,
+		arg.ExpiresAt,
+		arg.IsMfaRequired,
+	)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
@@ -33,13 +73,18 @@ func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUser
 
 const expireAllSessionsByUserID = `-- name: ExpireAllSessionsByUserID :many
 UPDATE shield_user_sessions
-SET expires_at = NOW()
-WHERE user_id = $1::UUID
+SET expires_at = NOW(), evicted_by = $1
+WHERE user_id = $2
 RETURNING id
 `
 
-func (q *Queries) ExpireAllSessionsByUserID(ctx context.Context, db DBTX, userID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := db.Query(ctx, expireAllSessionsByUserID, userID)
+type ExpireAllSessionsByUserIDParams struct {
+	EvictedBy uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) ExpireAllSessionsByUserID(ctx context.Context, db DBTX, arg ExpireAllSessionsByUserIDParams) ([]uuid.UUID, error) {
+	rows, err := db.Query(ctx, expireAllSessionsByUserID, arg.EvictedBy, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +106,7 @@ func (q *Queries) ExpireAllSessionsByUserID(ctx context.Context, db DBTX, userID
 const expireSessionByID = `-- name: ExpireSessionByID :one
 UPDATE shield_user_sessions
 SET expires_at = NOW()
-WHERE id = $1::UUID
+WHERE id = $1
 RETURNING id
 `
 
@@ -71,15 +116,49 @@ func (q *Queries) ExpireSessionByID(ctx context.Context, db DBTX, id uuid.UUID) 
 	return id, err
 }
 
-const findUserSessionByID = `-- name: FindUserSessionByID :one
-SELECT id, created_at, updated_at, expires_at, user_id, evicted_by
+const expireSomeSessionsByUserID = `-- name: ExpireSomeSessionsByUserID :many
+UPDATE shield_user_sessions
+SET expires_at = NOW(),  evicted_by = $1
+WHERE user_id = $2
+    AND id <> ANY($3::UUID[])
+RETURNING id
+`
+
+type ExpireSomeSessionsByUserIDParams struct {
+	EvictedBy  uuid.UUID
+	UserID     uuid.UUID
+	SessionIds []uuid.UUID
+}
+
+func (q *Queries) ExpireSomeSessionsByUserID(ctx context.Context, db DBTX, arg ExpireSomeSessionsByUserIDParams) ([]uuid.UUID, error) {
+	rows, err := db.Query(ctx, expireSomeSessionsByUserID, arg.EvictedBy, arg.UserID, arg.SessionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findActiveSessionByID = `-- name: FindActiveSessionByID :one
+SELECT id, created_at, updated_at, expires_at, user_id, evicted_by, is_mfa_required
 FROM shield_user_sessions
-WHERE id = $1::UUID AND expires_at > NOW()
+WHERE id = $1 AND expires_at > NOW()
 LIMIT 1
 `
 
-func (q *Queries) FindUserSessionByID(ctx context.Context, db DBTX, id uuid.UUID) (ShieldUserSession, error) {
-	row := db.QueryRow(ctx, findUserSessionByID, id)
+func (q *Queries) FindActiveSessionByID(ctx context.Context, db DBTX, id uuid.UUID) (ShieldUserSession, error) {
+	row := db.QueryRow(ctx, findActiveSessionByID, id)
 	var i ShieldUserSession
 	err := row.Scan(
 		&i.ID,
@@ -88,6 +167,7 @@ func (q *Queries) FindUserSessionByID(ctx context.Context, db DBTX, id uuid.UUID
 		&i.ExpiresAt,
 		&i.UserID,
 		&i.EvictedBy,
+		&i.IsMfaRequired,
 	)
 	return i, err
 }

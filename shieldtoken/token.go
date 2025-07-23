@@ -16,11 +16,17 @@ func FromRequest(req *http.Request) (string, error) {
 	if value != "" {
 		tok, err := token.TokenFromBearerString(value)
 		if err != nil {
-			return "", httperror.FromError(err, http.StatusUnauthorized)
+			return "", httperror.FromError(
+				err,
+				http.StatusUnauthorized,
+			)
 		}
 
 		return tok, nil
 	}
 
-	return "", httperror.FromError(ErrTokenNotFound, http.StatusUnauthorized)
+	return "", httperror.FromError(
+		ErrTokenNotFound,
+		http.StatusUnauthorized,
+	)
 }

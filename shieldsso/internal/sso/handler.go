@@ -1,5 +1,5 @@
 // SSO implements authentication logic to sign in with OpenID providers.
-package shieldsso
+package sso
 
 import (
 	"context"
@@ -66,22 +66,33 @@ func HandleCallback[T any](
 
 	extError := query.Get("error")
 	if extError != "" {
-		return nil, fmt.Errorf("shield/sso: external error: %s", extError)
+		return nil, fmt.Errorf(
+			"shield/sso: external error: %s",
+			extError,
+		)
 	}
 
 	code := query.Get("code")
 	if code == "" {
-		return nil, errors.New("shield/sso: missing authentication code")
+		return nil, errors.New(
+			"shield/sso: missing authentication code",
+		)
 	}
 
 	token, err := provider.ExchangeCode(ctx, code)
 	if err != nil {
-		return nil, fmt.Errorf("shield/sso: unable to exchange code for token: %w", err)
+		return nil, fmt.Errorf(
+			"shield/sso: unable to exchange code for token: %w",
+			err,
+		)
 	}
 
 	userInfo, err := provider.UserInfo(ctx, token)
 	if err != nil {
-		return nil, fmt.Errorf("shield/sso: unable to get user info: %w", err)
+		return nil, fmt.Errorf(
+			"shield/sso: unable to get user info: %w",
+			err,
+		)
 	}
 
 	return &ProviderInfo[T]{

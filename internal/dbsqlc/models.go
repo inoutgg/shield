@@ -59,11 +59,20 @@ type ShieldUserEmailVerificationToken struct {
 	UserID    uuid.UUID
 }
 
-type ShieldUserSession struct {
+type ShieldUserMfa struct {
 	ID        uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	ExpiresAt time.Time
+	Name      string
 	UserID    uuid.UUID
-	EvictedBy uuid.UUID
+}
+
+type ShieldUserSession struct {
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	ExpiresAt     time.Time
+	UserID        uuid.UUID
+	EvictedBy     uuid.UUID
+	IsMfaRequired bool
 }
