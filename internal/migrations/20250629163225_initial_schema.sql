@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS shield_user_credentials (
     ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS shield_password_reset_tokens (
+CREATE UNLOGGED TABLE IF NOT EXISTS shield_password_reset_tokens (
   id UUID NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS shield_password_reset_tokens (
   CHECK (expires_at > created_at)
 );
 
-CREATE TABLE IF NOT EXISTS shield_user_sessions (
+CREATE UNLOGGED TABLE IF NOT EXISTS shield_user_sessions (
   id UUID NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -67,13 +67,14 @@ CREATE TABLE IF NOT EXISTS shield_user_sessions (
   user_id UUID NOT NULL,
   evicted_by UUID NULL,
   PRIMARY KEY (user_id, id),
-  UNIQUE (id),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE,
   FOREIGN KEY (evicted_by) REFERENCES shield_users (id),
   CHECK (expires_at > CURRENT_TIMESTAMP),
   CHECK (expires_at > created_at)
 );
+
+CREATE INDEX sus_id_idx ON shield_user_sessions USING HASH (id);
 
 ---- create above / drop below ----
 
