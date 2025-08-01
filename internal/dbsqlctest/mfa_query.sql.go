@@ -7,6 +7,8 @@ package dbsqlctest
 
 import (
 	"context"
+
+	typeid "go.jetify.com/typeid/v2"
 )
 
 const createUserMFA = `-- name: CreateUserMFA :one
@@ -22,8 +24,8 @@ INSERT INTO shield_user_mfas (
 `
 
 type CreateUserMFAParams struct {
-	ID     string
-	UserID string
+	ID     typeid.TypeID
+	UserID typeid.TypeID
 	Name   string
 }
 
@@ -44,7 +46,7 @@ const getUserMFAsByUserID = `-- name: GetUserMFAsByUserID :many
 SELECT id, created_at, updated_at, name, user_id FROM shield_user_mfas WHERE user_id = $1
 `
 
-func (q *Queries) GetUserMFAsByUserID(ctx context.Context, db DBTX, userID string) ([]ShieldUserMfa, error) {
+func (q *Queries) GetUserMFAsByUserID(ctx context.Context, db DBTX, userID typeid.TypeID) ([]ShieldUserMfa, error) {
 	rows, err := db.Query(ctx, getUserMFAsByUserID, userID)
 	if err != nil {
 		return nil, err

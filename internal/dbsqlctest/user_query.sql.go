@@ -7,6 +7,8 @@ package dbsqlctest
 
 import (
 	"context"
+
+	typeid "go.jetify.com/typeid/v2"
 )
 
 const testCreateUser = `-- name: TestCreateUser :one
@@ -16,7 +18,7 @@ RETURNING id, created_at, updated_at, email, is_email_verified
 `
 
 type TestCreateUserParams struct {
-	ID              string
+	ID              typeid.TypeID
 	Email           string
 	IsEmailVerified bool
 }

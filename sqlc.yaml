@@ -10,7 +10,7 @@ sql:
       - "internal/dbsqlc/mfa_query.sql"
     engine: "postgresql"
     gen:
-      go:
+      go: &x-common-gen-go
         package: "dbsqlc"
         sql_package: "pgx/v5"
         out: "internal/dbsqlc"
@@ -128,17 +128,6 @@ sql:
     engine: "postgresql"
     gen:
       go:
+        <<: *x-common-gen-go
         package: "dbsqlctest"
-        sql_package: "pgx/v5"
         out: "internal/dbsqlctest"
-        emit_pointers_for_null_types: true
-        emit_methods_with_db_argument: true
-        overrides:
-          - db_type: "pg_catalog.timestamptz"
-            go_type:
-              type: "time.Time"
-            nullable: false
-          - db_type: "pg_catalog.timestamptz"
-            go_type:
-              type: "time.Time"
-            nullable: true

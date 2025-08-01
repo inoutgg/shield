@@ -6,31 +6,33 @@ package dbsqlctest
 
 import (
 	"time"
+
+	typeid "go.jetify.com/typeid/v2"
 )
 
 type ShieldPasswordResetToken struct {
-	ID        string
+	ID        typeid.TypeID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	ExpiresAt time.Time
-	UserID    string
+	UserID    typeid.TypeID
 }
 
 type ShieldRecoveryCode struct {
-	ID               string
+	ID               typeid.TypeID
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
-	UserID           string
+	UserID           typeid.TypeID
 	RecoveryCodeHash string
 	IsConsumable     bool
-	EvictedBy        *string
+	EvictedBy        *typeid.TypeID
 	EvictedAt        time.Time
 }
 
 type ShieldUser struct {
-	ID              string
+	ID              typeid.TypeID
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -38,39 +40,39 @@ type ShieldUser struct {
 }
 
 type ShieldUserCredential struct {
-	ID                   string
+	ID                   typeid.TypeID
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	Name                 string
-	UserID               string
+	UserID               typeid.TypeID
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
 
 type ShieldUserEmailVerificationToken struct {
-	ID        string
+	ID        typeid.TypeID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	Email     string
-	UserID    string
+	UserID    typeid.TypeID
 }
 
 type ShieldUserMfa struct {
-	ID        string
+	ID        typeid.TypeID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
-	UserID    string
+	UserID    typeid.TypeID
 }
 
 type ShieldUserSession struct {
-	ID            string
+	ID            typeid.TypeID
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ExpiresAt     time.Time
-	UserID        string
-	EvictedBy     *string
+	UserID        typeid.TypeID
+	EvictedBy     *typeid.TypeID
 	IsMfaRequired bool
 }
