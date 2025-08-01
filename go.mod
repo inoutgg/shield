@@ -1,6 +1,8 @@
 module go.inout.gg/shield
 
-go 1.24
+go 1.24.0
+
+toolchain go1.24.1
 
 tool go.inout.gg/conduit/cmd/conduit
 
@@ -30,6 +32,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-webauthn/x v0.1.21 // indirect
+	github.com/gofrs/uuid/v5 v5.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/google/go-tpm v0.9.5 // indirect
 	github.com/gosimple/slug v1.15.0 // indirect
@@ -44,6 +47,7 @@ require (
 	github.com/segmentio/go-snakecase v1.2.0 // indirect
 	github.com/urfave/cli/v3 v3.3.8 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	go.jetify.com/typeid/v2 v2.0.0-alpha.3 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect

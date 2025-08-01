@@ -170,7 +170,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 
 	if dbUser.PasswordHash == nil && oldPassword == "" {
 		if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-			ID:                   uuidv7.Must(),
+			ID:                   uuidv7.Must(uuidv7.PrefixCredential),
 			UserID:               dbUser.ID,
 			UserCredentialKey:    dbUser.Email,
 			UserCredentialSecret: passwordHash,

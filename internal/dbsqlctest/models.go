@@ -6,33 +6,31 @@ package dbsqlctest
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type ShieldPasswordResetToken struct {
-	ID        uuid.UUID
+	ID        string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	ExpiresAt time.Time
-	UserID    uuid.UUID
+	UserID    string
 }
 
 type ShieldRecoveryCode struct {
-	ID               uuid.UUID
+	ID               string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
-	UserID           uuid.UUID
+	UserID           string
 	RecoveryCodeHash string
 	IsConsumable     bool
-	EvictedBy        uuid.UUID
+	EvictedBy        *string
 	EvictedAt        time.Time
 }
 
 type ShieldUser struct {
-	ID              uuid.UUID
+	ID              string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -40,39 +38,39 @@ type ShieldUser struct {
 }
 
 type ShieldUserCredential struct {
-	ID                   uuid.UUID
+	ID                   string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	Name                 string
-	UserID               uuid.UUID
+	UserID               string
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
 
 type ShieldUserEmailVerificationToken struct {
-	ID        uuid.UUID
+	ID        string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	Email     string
-	UserID    uuid.UUID
+	UserID    string
 }
 
 type ShieldUserMfa struct {
-	ID        uuid.UUID
+	ID        string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
-	UserID    uuid.UUID
+	UserID    string
 }
 
 type ShieldUserSession struct {
-	ID            uuid.UUID
+	ID            string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ExpiresAt     time.Time
-	UserID        uuid.UUID
-	EvictedBy     uuid.UUID
+	UserID        string
+	EvictedBy     *string
 	IsMfaRequired bool
 }

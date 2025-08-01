@@ -5,9 +5,9 @@ WITH
       (id, name, user_id, user_credential_key, user_credential_secret)
     VALUES
       (
-        @id::UUID,
+        @id::VARCHAR,
         'password',
-        @user_id::UUID,
+        @user_id::VARCHAR,
         @user_credential_key,
         @user_credential_secret
       )
@@ -42,7 +42,7 @@ WITH
     "user" AS (
     SELECT *
     FROM shield_users
-    WHERE id = @user_id::UUID
+    WHERE id = @user_id::VARCHAR
     ),
   credential AS (
     SELECT user_credential_key, user_credential_secret, user_id
@@ -67,7 +67,7 @@ WITH
     INSERT INTO shield_password_reset_tokens
       (id, user_id, token, expires_at, is_used)
     VALUES
-      (@id::UUID, @user_id, @token, @expires_at, FALSE)
+      (@id::VARCHAR, @user_id, @token, @expires_at, FALSE)
     ON CONFLICT (user_id, is_used) DO UPDATE
       SET expires_at = greatest(
         excluded.expires_at,

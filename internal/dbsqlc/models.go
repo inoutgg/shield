@@ -7,32 +7,32 @@ package dbsqlc
 import (
 	"time"
 
-	"github.com/google/uuid"
+	typeid "go.jetify.com/typeid/v2"
 )
 
 type ShieldPasswordResetToken struct {
-	ID        uuid.UUID
+	ID        typeid.TypeID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	ExpiresAt time.Time
-	UserID    uuid.UUID
+	UserID    typeid.TypeID
 }
 
 type ShieldRecoveryCode struct {
-	ID               uuid.UUID
+	ID               typeid.TypeID
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
-	UserID           uuid.UUID
+	UserID           typeid.TypeID
 	RecoveryCodeHash string
 	IsConsumable     bool
-	EvictedBy        uuid.UUID
+	EvictedBy        *typeid.TypeID
 	EvictedAt        time.Time
 }
 
 type ShieldUser struct {
-	ID              uuid.UUID
+	ID              typeid.TypeID
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -40,39 +40,39 @@ type ShieldUser struct {
 }
 
 type ShieldUserCredential struct {
-	ID                   uuid.UUID
+	ID                   typeid.TypeID
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	Name                 string
-	UserID               uuid.UUID
+	UserID               typeid.TypeID
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
 
 type ShieldUserEmailVerificationToken struct {
-	ID        uuid.UUID
+	ID        typeid.TypeID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	Email     string
-	UserID    uuid.UUID
+	UserID    typeid.TypeID
 }
 
 type ShieldUserMfa struct {
-	ID        uuid.UUID
+	ID        typeid.TypeID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
-	UserID    uuid.UUID
+	UserID    typeid.TypeID
 }
 
 type ShieldUserSession struct {
-	ID            uuid.UUID
+	ID            typeid.TypeID
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ExpiresAt     time.Time
-	UserID        uuid.UUID
-	EvictedBy     uuid.UUID
+	UserID        typeid.TypeID
+	EvictedBy     *typeid.TypeID
 	IsMfaRequired bool
 }

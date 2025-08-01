@@ -8,8 +8,6 @@ package dbsqlc
 import (
 	"context"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 const createUserPasskeyCredential = `-- name: CreateUserPasskeyCredential :exec
@@ -17,17 +15,17 @@ INSERT INTO shield_user_credentials
   (id, name, user_id, user_credential_key, user_credential_secret)
 VALUES
   (
-    $1::UUID,
+    $1::VARCHAR,
     'passkey',
-    $2::UUID,
+    $2::VARCHAR,
     $3,
     $4
   )
 `
 
 type CreateUserPasskeyCredentialParams struct {
-	ID                   uuid.UUID
-	UserID               uuid.UUID
+	ID                   string
+	UserID               string
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
@@ -63,7 +61,7 @@ FROM
 `
 
 type FindUserWithPasskeyCredentialByEmailRow struct {
-	ID              uuid.UUID
+	ID              string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string

@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
+	typeid "go.jetify.com/typeid/v2"
 )
 
 const allActiveSessions = `-- name: AllActiveSessions :many
@@ -18,7 +18,7 @@ FROM shield_user_sessions
 WHERE user_id = $1 AND expires_at > NOW()
 `
 
-func (q *Queries) AllActiveSessions(ctx context.Context, db DBTX, userID uuid.UUID) ([]ShieldUserSession, error) {
+func (q *Queries) AllActiveSessions(ctx context.Context, db DBTX, userID typeid.TypeID) ([]ShieldUserSession, error) {
 	rows, err := db.Query(ctx, allActiveSessions, userID)
 	if err != nil {
 		return nil, err
@@ -53,20 +53,20 @@ RETURNING id
 `
 
 type CreateUserSessionParams struct {
-	ID            uuid.UUID
-	UserID        uuid.UUID
+	ID            typeid.TypeID
+	UserID        typeid.TypeID
 	ExpiresAt     time.Time
 	IsMfaRequired bool
 }
 
-func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (uuid.UUID, error) {
+func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (typeid.TypeID, error) {
 	row := db.QueryRow(ctx, createUserSession,
 		arg.ID,
 		arg.UserID,
 		arg.ExpiresAt,
 		arg.IsMfaRequired,
 	)
-	var id uuid.UUID
+	var id typeid.TypeID
 	err := row.Scan(&id)
 	return id, err
 }
@@ -79,19 +79,19 @@ RETURNING id
 `
 
 type ExpireAllSessionsByUserIDParams struct {
-	EvictedBy uuid.UUID
-	UserID    uuid.UUID
+	EvictedBy *typeid.TypeID
+	UserID    typeid.TypeID
 }
 
-func (q *Queries) ExpireAllSessionsByUserID(ctx context.Context, db DBTX, arg ExpireAllSessionsByUserIDParams) ([]uuid.UUID, error) {
+func (q *Queries) ExpireAllSessionsByUserID(ctx context.Context, db DBTX, arg ExpireAllSessionsByUserIDParams) ([]typeid.TypeID, error) {
 	rows, err := db.Query(ctx, expireAllSessionsByUserID, arg.EvictedBy, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []uuid.UUID
+	var items []typeid.TypeID
 	for rows.Next() {
-		var id uuid.UUID
+		var id typeid.TypeID
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
@@ -110,7 +110,7 @@ WHERE id = $1
 RETURNING id
 `
 
-func (q *Queries) ExpireSessionByID(ctx context.Context, db DBTX, id uuid.UUID) (uuid.UUID, error) {
+func (q *Queries) ExpireSessionByID(ctx context.Context, db DBTX, id typeid.TypeID) (typeid.TypeID, error) {
 	row := db.QueryRow(ctx, expireSessionByID, id)
 	err := row.Scan(&id)
 	return id, err
@@ -120,25 +120,25 @@ const expireSomeSessionsByUserID = `-- name: ExpireSomeSessionsByUserID :many
 UPDATE shield_user_sessions
 SET expires_at = NOW(),  evicted_by = $1
 WHERE user_id = $2
-    AND id <> ANY($3::UUID[])
+    AND id <> ANY($3::VARCHAR[])
 RETURNING id
 `
 
 type ExpireSomeSessionsByUserIDParams struct {
-	EvictedBy  uuid.UUID
-	UserID     uuid.UUID
-	SessionIds []uuid.UUID
+	EvictedBy  *typeid.TypeID
+	UserID     typeid.TypeID
+	SessionIds []string
 }
 
-func (q *Queries) ExpireSomeSessionsByUserID(ctx context.Context, db DBTX, arg ExpireSomeSessionsByUserIDParams) ([]uuid.UUID, error) {
+func (q *Queries) ExpireSomeSessionsByUserID(ctx context.Context, db DBTX, arg ExpireSomeSessionsByUserIDParams) ([]typeid.TypeID, error) {
 	rows, err := db.Query(ctx, expireSomeSessionsByUserID, arg.EvictedBy, arg.UserID, arg.SessionIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []uuid.UUID
+	var items []typeid.TypeID
 	for rows.Next() {
-		var id uuid.UUID
+		var id typeid.TypeID
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
@@ -157,7 +157,7 @@ WHERE id = $1 AND expires_at > NOW()
 LIMIT 1
 `
 
-func (q *Queries) FindActiveSessionByID(ctx context.Context, db DBTX, id uuid.UUID) (ShieldUserSession, error) {
+func (q *Queries) FindActiveSessionByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldUserSession, error) {
 	row := db.QueryRow(ctx, findActiveSessionByID, id)
 	var i ShieldUserSession
 	err := row.Scan(

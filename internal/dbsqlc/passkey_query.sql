@@ -3,9 +3,9 @@ INSERT INTO shield_user_credentials
   (id, name, user_id, user_credential_key, user_credential_secret)
 VALUES
   (
-    @id::UUID,
+    @id::VARCHAR,
     'passkey',
-    @user_id::UUID,
+    @user_id::VARCHAR,
     @user_credential_key,
     @user_credential_secret
   );

@@ -8,12 +8,12 @@ package dbsqlc
 import (
 	"context"
 
-	"github.com/google/uuid"
+	typeid "go.jetify.com/typeid/v2"
 )
 
 type CreateRecoveryCodeBatchParams struct {
-	ID               uuid.UUID
-	UserID           uuid.UUID
+	ID               string
+	UserID           string
 	RecoveryCodeHash string
 	IsConsumable     bool
 }
@@ -21,14 +21,14 @@ type CreateRecoveryCodeBatchParams struct {
 const evictUnconsumedRecoveryCodeBatch = `-- name: EvictUnconsumedRecoveryCodeBatch :exec
 UPDATE shield_recovery_codes
 SET
-  evicted_by = $1::UUID,
+  evicted_by = $1::VARCHAR,
   evicted_at = NOW()
 WHERE user_id = $2 AND is_consumable = TRUE
 `
 
 type EvictUnconsumedRecoveryCodeBatchParams struct {
-	EvictedBy uuid.UUID
-	UserID    uuid.UUID
+	EvictedBy string
+	UserID    typeid.TypeID
 }
 
 func (q *Queries) EvictUnconsumedRecoveryCodeBatch(ctx context.Context, db DBTX, arg EvictUnconsumedRecoveryCodeBatchParams) error {

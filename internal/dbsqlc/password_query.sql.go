@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
+	typeid "go.jetify.com/typeid/v2"
 )
 
 const changePasswordCredentialEmailByUserID = `-- name: ChangePasswordCredentialEmailByUserID :exec
@@ -20,7 +20,7 @@ WHERE user_id = $2 AND name = 'password'
 
 type ChangePasswordCredentialEmailByUserIDParams struct {
 	Email  string
-	UserID uuid.UUID
+	UserID typeid.TypeID
 }
 
 func (q *Queries) ChangePasswordCredentialEmailByUserID(ctx context.Context, db DBTX, arg ChangePasswordCredentialEmailByUserIDParams) error {
@@ -80,7 +80,7 @@ FROM
 `
 
 type FindUserWithPasswordCredentialByEmailRow struct {
-	ID              uuid.UUID
+	ID              string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -107,7 +107,7 @@ WITH
     "user" AS (
     SELECT id, created_at, updated_at, email, is_email_verified
     FROM shield_users
-    WHERE id = $1::UUID
+    WHERE id = $1::VARCHAR
     ),
   credential AS (
     SELECT user_credential_key, user_credential_secret, user_id
@@ -123,7 +123,7 @@ FROM
 `
 
 type FindUserWithPasswordCredentialByUserIDRow struct {
-	ID              uuid.UUID
+	ID              string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -131,7 +131,7 @@ type FindUserWithPasswordCredentialByUserIDRow struct {
 	PasswordHash    *string
 }
 
-func (q *Queries) FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID uuid.UUID) (FindUserWithPasswordCredentialByUserIDRow, error) {
+func (q *Queries) FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID string) (FindUserWithPasswordCredentialByUserIDRow, error) {
 	row := db.QueryRow(ctx, findUserWithPasswordCredentialByUserID, userID)
 	var i FindUserWithPasswordCredentialByUserIDRow
 	err := row.Scan(
@@ -163,9 +163,9 @@ WITH
       (id, name, user_id, user_credential_key, user_credential_secret)
     VALUES
       (
-        $1::UUID,
+        $1::VARCHAR,
         'password',
-        $2::UUID,
+        $2::VARCHAR,
         $3,
         $4
       )
@@ -178,8 +178,8 @@ FROM credential
 `
 
 type UpsertPasswordCredentialByUserIDParams struct {
-	ID                   uuid.UUID
-	UserID               uuid.UUID
+	ID                   string
+	UserID               string
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
@@ -200,7 +200,7 @@ WITH
     INSERT INTO shield_password_reset_tokens
       (id, user_id, token, expires_at, is_used)
     VALUES
-      ($1::UUID, $2, $3, $4, FALSE)
+      ($1::VARCHAR, $2, $3, $4, FALSE)
     ON CONFLICT (user_id, is_used) DO UPDATE
       SET expires_at = greatest(
         excluded.expires_at,
@@ -213,15 +213,15 @@ FROM token
 `
 
 type UpsertPasswordResetTokenParams struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
+	ID        string
+	UserID    typeid.TypeID
 	Token     string
 	ExpiresAt time.Time
 }
 
 type UpsertPasswordResetTokenRow struct {
 	Token     string
-	ID        uuid.UUID
+	ID        string
 	ExpiresAt time.Time
 }
 

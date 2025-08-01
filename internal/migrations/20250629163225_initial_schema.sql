@@ -1,7 +1,7 @@
 -- migration: 20250629163225_initial_schema.sql.sql
 
 CREATE TABLE IF NOT EXISTS shield_users (
-  id UUID NOT NULL,
+  id VARCHAR(64) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   email VARCHAR(255) NOT NULL,
@@ -10,14 +10,14 @@ CREATE TABLE IF NOT EXISTS shield_users (
   UNIQUE (email)
 );
 
-CREATE TABLE IF NOT EXISTS shield_user_email_verification_tokens (
-  id UUID NOT NULL,
+CREATE UNLOGGED TABLE IF NOT EXISTS shield_user_email_verification_tokens (
+  id VARCHAR(64) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_used BOOLEAN NOT NULL DEFAULT FALSE,
   token VARCHAR(16) NOT NULL,
   email VARCHAR(255) NOT NULL,
-  user_id UUID NOT NULL,
+  user_id VARCHAR(64) NOT NULL,
   PRIMARY KEY (user_id, id),
   UNIQUE (email, is_used),
   UNIQUE (token),
@@ -27,11 +27,11 @@ CREATE TABLE IF NOT EXISTS shield_user_email_verification_tokens (
 );
 
 CREATE TABLE IF NOT EXISTS shield_user_credentials (
-  id UUID NOT NULL,
+  id VARCHAR(64) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   name VARCHAR(255) NOT NULL,
-  user_id UUID NOT NULL,
+  user_id VARCHAR(64) NOT NULL,
   user_credential_key VARCHAR(255) NOT NULL, -- can be SSO user ID, email, etc.
   user_credential_secret VARCHAR(4095) NOT NULL, -- can SSO token, password hash, etc.
   PRIMARY KEY (user_id, id),
@@ -43,13 +43,13 @@ CREATE TABLE IF NOT EXISTS shield_user_credentials (
 );
 
 CREATE UNLOGGED TABLE IF NOT EXISTS shield_password_reset_tokens (
-  id UUID NOT NULL,
+  id VARCHAR(64) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_used BOOLEAN NOT NULL DEFAULT FALSE,
   token VARCHAR(16) NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  user_id UUID NOT NULL,
+  user_id VARCHAR(64) NOT NULL,
   PRIMARY KEY (user_id, id),
   UNIQUE (token),
   UNIQUE (user_id, is_used),
@@ -60,12 +60,12 @@ CREATE UNLOGGED TABLE IF NOT EXISTS shield_password_reset_tokens (
 );
 
 CREATE UNLOGGED TABLE IF NOT EXISTS shield_user_sessions (
-  id UUID NOT NULL,
+  id VARCHAR(64) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  user_id UUID NOT NULL,
-  evicted_by UUID NULL,
+  user_id VARCHAR(64) NOT NULL,
+  evicted_by VARCHAR(64) NULL,
   PRIMARY KEY (user_id, id),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE,

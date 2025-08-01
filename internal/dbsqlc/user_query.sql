@@ -1,9 +1,9 @@
 -- name: CreateUser :exec
 INSERT INTO shield_users (id, email)
-VALUES (@id::UUID, @email);
+VALUES (@id::VARCHAR, @email);
 
 -- name: FindUserByID :one
-SELECT * FROM shield_users WHERE id = @id::UUID LIMIT 1;
+SELECT * FROM shield_users WHERE id = @id::VARCHAR LIMIT 1;
 
 -- name: FindUserByEmail :one
 SELECT * FROM shield_users WHERE email = @email LIMIT 1;
@@ -19,7 +19,7 @@ WITH
     INSERT INTO shield_user_email_verification_tokens
       (id, user_id, token, is_used)
     VALUES
-      (@id::UUID, @user_id, @token, @expires_at, FALSE)
+      (@id::VARCHAR, @user_id, @token, @expires_at, FALSE)
     ON CONFLICT (user_id, is_used) DO NOTHING
     RETURNING token, id
   )

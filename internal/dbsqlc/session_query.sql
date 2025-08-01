@@ -30,5 +30,5 @@ RETURNING id;
 UPDATE shield_user_sessions
 SET expires_at = NOW(),  evicted_by = @evicted_by
 WHERE user_id = @user_id
-    AND id <> ANY(@session_ids::UUID[])
+    AND id <> ANY(@session_ids::VARCHAR[])
 RETURNING id;

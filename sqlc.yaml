@@ -17,11 +17,6 @@ sql:
         emit_pointers_for_null_types: true
         emit_methods_with_db_argument: true
         overrides:
-          - db_type: "uuid"
-            go_type: "github.com/google/uuid.UUID"
-          - db_type: "uuid"
-            nullable: true
-            go_type: "github.com/google/uuid.UUID"
           - db_type: "pg_catalog.timestamptz"
             go_type:
               type: "time.Time"
@@ -30,6 +25,100 @@ sql:
             go_type:
               type: "time.Time"
             nullable: true
+
+          # per table overrides
+          ### shield_recovery_codes ###
+          - column: "shield_recovery_codes.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_recovery_codes.user_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_recovery_codes.evicted_by"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+              pointer: true
+            nullable: true
+
+          ### shield_user_sessions ###
+          - column: "shield_user_sessions.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_user_sessions.user_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_user_sessions.evicted_by"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+              pointer: true
+            nullable: true
+
+          ### shield_password_reset_tokens ###
+          - column: "shield_password_reset_tokens.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_password_reset_tokens.user_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
+          ### shield_user_credentials ###
+          - column: "shield_user_credentials.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_user_credentials.user_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
+          ### shield_user_email_verification_tokens ###
+          - column: "shield_user_email_verification_tokens.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_user_email_verification_tokens.user_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
+          ### shield_users ###
+          - column: "shield_users.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
+          ### shield_user_mfas ###
+          - column: "shield_user_mfas.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_user_mfas.user_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
 
   - schema: "internal/migrations"
     queries:
@@ -45,11 +134,6 @@ sql:
         emit_pointers_for_null_types: true
         emit_methods_with_db_argument: true
         overrides:
-          - db_type: "uuid"
-            go_type: "github.com/google/uuid.UUID"
-          - db_type: "uuid"
-            nullable: true
-            go_type: "github.com/google/uuid.UUID"
           - db_type: "pg_catalog.timestamptz"
             go_type:
               type: "time.Time"

@@ -8,7 +8,7 @@ package dbsqlc
 import (
 	"context"
 
-	"github.com/google/uuid"
+	typeid "go.jetify.com/typeid/v2"
 )
 
 const changeUserEmailByID = `-- name: ChangeUserEmailByID :exec
@@ -19,7 +19,7 @@ WHERE id = $2
 
 type ChangeUserEmailByIDParams struct {
 	Email string
-	ID    uuid.UUID
+	ID    typeid.TypeID
 }
 
 func (q *Queries) ChangeUserEmailByID(ctx context.Context, db DBTX, arg ChangeUserEmailByIDParams) error {
@@ -29,11 +29,11 @@ func (q *Queries) ChangeUserEmailByID(ctx context.Context, db DBTX, arg ChangeUs
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO shield_users (id, email)
-VALUES ($1::UUID, $2)
+VALUES ($1::VARCHAR, $2)
 `
 
 type CreateUserParams struct {
-	ID    uuid.UUID
+	ID    string
 	Email string
 }
 
@@ -60,10 +60,10 @@ func (q *Queries) FindUserByEmail(ctx context.Context, db DBTX, email string) (S
 }
 
 const findUserByID = `-- name: FindUserByID :one
-SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1::UUID LIMIT 1
+SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1::VARCHAR LIMIT 1
 `
 
-func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id uuid.UUID) (ShieldUser, error) {
+func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id string) (ShieldUser, error) {
 	row := db.QueryRow(ctx, findUserByID, id)
 	var i ShieldUser
 	err := row.Scan(
@@ -93,7 +93,7 @@ WITH
     INSERT INTO shield_user_email_verification_tokens
       (id, user_id, token, is_used)
     VALUES
-      ($1::UUID, $2, $3, $4, FALSE)
+      ($1::VARCHAR, $2, $3, $4, FALSE)
     ON CONFLICT (user_id, is_used) DO NOTHING
     RETURNING token, id
   )
@@ -102,15 +102,15 @@ FROM token
 `
 
 type UpsertEmailVerificationTokenParams struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
+	ID        string
+	UserID    typeid.TypeID
 	Token     string
 	ExpiresAt bool
 }
 
 type UpsertEmailVerificationTokenRow struct {
 	Token string
-	ID    uuid.UUID
+	ID    string
 }
 
 func (q *Queries) UpsertEmailVerificationToken(ctx context.Context, db DBTX, arg UpsertEmailVerificationTokenParams) (UpsertEmailVerificationTokenRow, error) {
