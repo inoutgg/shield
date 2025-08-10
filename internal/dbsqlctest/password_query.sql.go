@@ -7,6 +7,8 @@ package dbsqlctest
 
 import (
 	"context"
+
+	typeid "go.jetify.com/typeid/v2"
 )
 
 const testCreatePassword = `-- name: TestCreatePassword :one
@@ -14,9 +16,9 @@ INSERT INTO shield_user_credentials
   (id, name, user_id, user_credential_key, user_credential_secret)
 VALUES
   (
-    $1::VARCHAR,
+    $1,
     'password',
-    $2::VARCHAR,
+    $2,
     $3,
     $4
   )
@@ -24,8 +26,8 @@ RETURNING id, created_at, updated_at, name, user_id, user_credential_key, user_c
 `
 
 type TestCreatePasswordParams struct {
-	ID                   string
-	UserID               string
+	ID                   typeid.TypeID
+	UserID               typeid.TypeID
 	UserCredentialKey    string
 	UserCredentialSecret string
 }

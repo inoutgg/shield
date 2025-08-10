@@ -9,8 +9,8 @@ import (
 	"github.com/go-playground/mold/v4/modifiers"
 	"github.com/go-playground/mold/v4/scrubbers"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/sliceutil"
@@ -53,7 +53,7 @@ var DefaultLogger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 type User[T any] struct {
 	T          *T
 	cachedMfas []string
-	ID         uuid.UUID
+	ID         typeid.TypeID
 }
 
 // MFA returns a list of enabled MFAs for the user.

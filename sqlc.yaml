@@ -17,6 +17,10 @@ sql:
         emit_pointers_for_null_types: true
         emit_methods_with_db_argument: true
         overrides:
+          ###########################
+          # per type overrides      #
+          ###########################
+
           - db_type: "pg_catalog.timestamptz"
             go_type:
               type: "time.Time"
@@ -26,7 +30,10 @@ sql:
               type: "time.Time"
             nullable: true
 
-          # per table overrides
+          ###########################
+          # per table overrides     #
+          ###########################
+
           ### shield_recovery_codes ###
           - column: "shield_recovery_codes.id"
             go_type:

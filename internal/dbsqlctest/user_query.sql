@@ -1,5 +1,5 @@
 -- name: TestFindUserByID :one
-SELECT * FROM shield_users WHERE id = @id::VARCHAR LIMIT 1;
+SELECT * FROM shield_users WHERE id = @id LIMIT 1;
 
 -- name: TestFindAllUsers :many
 SELECT * FROM shield_users;

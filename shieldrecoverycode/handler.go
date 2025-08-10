@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
+	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/random"
-	"go.inout.gg/shield/internal/uuidv7"
+	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldpassword"
 )
 
@@ -156,7 +156,7 @@ func (h *Handler) Generate() ([]string, error) {
 // CreateRecoveryCodes generates a new set of recovery codes.
 func (h *Handler) CreateRecoveryCodes(
 	ctx context.Context,
-	userID uuid.UUID,
+	userID typeid.TypeID,
 ) error {
 	codes, err := h.Generate()
 	if err != nil {
@@ -190,7 +190,8 @@ func (h *Handler) CreateRecoveryCodes(
 // userID is the ID of the user to update recovery codes for.
 func (h *Handler) ReplaceRecoveryCodes(
 	ctx context.Context,
-	userID, replacedBy uuid.UUID,
+	userID typeid.TypeID,
+	replacedBy *typeid.TypeID,
 ) error {
 	codes, err := h.Generate()
 	if err != nil {
@@ -223,8 +224,8 @@ func (h *Handler) ReplaceRecoveryCodes(
 
 func (h *Handler) ReplaceRecoveryCodesInTx(
 	ctx context.Context,
-	userID uuid.UUID,
-	replacedBy uuid.UUID,
+	userID typeid.TypeID,
+	replacedBy *typeid.TypeID,
 	codes []string,
 	tx pgx.Tx,
 ) error {
@@ -241,8 +242,8 @@ func (h *Handler) ReplaceRecoveryCodesInTx(
 
 func (h *Handler) EvictRecoveryCodesInTx(
 	ctx context.Context,
-	userID uuid.UUID,
-	evictedBy uuid.UUID,
+	userID typeid.TypeID,
+	evictedBy *typeid.TypeID,
 	tx pgx.Tx,
 ) error {
 	arg := dbsqlc.EvictUnconsumedRecoveryCodeBatchParams{
@@ -261,14 +262,14 @@ func (h *Handler) EvictRecoveryCodesInTx(
 
 func (h *Handler) CreateRecoveryCodesInTx(
 	ctx context.Context,
-	userID uuid.UUID,
+	userID typeid.TypeID,
 	codes []string,
 	tx pgx.Tx,
 ) error {
 	rows := make([]dbsqlc.CreateRecoveryCodeBatchParams, len(codes))
 	for i, code := range codes {
 		rows[i] = dbsqlc.CreateRecoveryCodeBatchParams{
-			ID:               uuidv7.Must(),
+			ID:               tid.MustRecoveryKeyID(),
 			IsConsumable:     true,
 			RecoveryCodeHash: code,
 			UserID:           userID,

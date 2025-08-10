@@ -60,27 +60,17 @@ func (q *Queries) FindPasswordResetToken(ctx context.Context, db DBTX, token str
 }
 
 const findUserWithPasswordCredentialByEmail = `-- name: FindUserWithPasswordCredentialByEmail :one
-WITH
-  credential AS (
-    SELECT user_credential_key, user_credential_secret, user_id
-    FROM shield_user_credentials
-    WHERE name = 'password' AND user_credential_key = $1
-  ),
-  "user" AS (
-    SELECT id, created_at, updated_at, email, is_email_verified
-    FROM shield_users
-    WHERE email = $1
-  )
-SELECT "user".id, "user".created_at, "user".updated_at, "user".email, "user".is_email_verified, credential.user_credential_secret AS password_hash
-FROM
-  credential
-  -- validate that the credential and user has the same email address.
-  JOIN "user"
-    ON credential.user_id = "user".id
+SELECT u.id, u.created_at, u.updated_at, u.email, u.is_email_verified, credential.user_credential_secret AS password_hash
+FROM shield_users u
+JOIN shield_user_credentials credential
+    ON credential.user_id = u.id
+    AND credential.name = 'password'
+    AND credential.user_credential_key = $1
+WHERE u.email = $1
 `
 
 type FindUserWithPasswordCredentialByEmailRow struct {
-	ID              string
+	ID              typeid.TypeID
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -103,27 +93,18 @@ func (q *Queries) FindUserWithPasswordCredentialByEmail(ctx context.Context, db 
 }
 
 const findUserWithPasswordCredentialByUserID = `-- name: FindUserWithPasswordCredentialByUserID :one
-WITH
-    "user" AS (
-    SELECT id, created_at, updated_at, email, is_email_verified
-    FROM shield_users
-    WHERE id = $1::VARCHAR
-    ),
-  credential AS (
-    SELECT user_credential_key, user_credential_secret, user_id
-    FROM shield_user_credentials
-    WHERE name = 'password' AND user_credential_key = "user".email
-  )
-SELECT "user".id, "user".created_at, "user".updated_at, "user".email, "user".is_email_verified, credential.user_credential_secret AS password_hash
+SELECT shield_user.id, shield_user.created_at, shield_user.updated_at, shield_user.email, shield_user.is_email_verified, credential.user_credential_secret AS password_hash
 FROM
-  "user"
-  -- validate that the credential and user has the same email address.
-  LEFT JOIN credential
-    ON credential.user_id = "user".id
+  shield_users AS shield_user
+  LEFT JOIN shield_user_credentials AS credential
+    ON credential.user_id = shield_user.id
+    AND credential.name = 'password'
+    AND credential.user_credential_key = shield_user.email
+WHERE shield_user.id = $1
 `
 
 type FindUserWithPasswordCredentialByUserIDRow struct {
-	ID              string
+	ID              typeid.TypeID
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -131,7 +112,7 @@ type FindUserWithPasswordCredentialByUserIDRow struct {
 	PasswordHash    *string
 }
 
-func (q *Queries) FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID string) (FindUserWithPasswordCredentialByUserIDRow, error) {
+func (q *Queries) FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID typeid.TypeID) (FindUserWithPasswordCredentialByUserIDRow, error) {
 	row := db.QueryRow(ctx, findUserWithPasswordCredentialByUserID, userID)
 	var i FindUserWithPasswordCredentialByUserIDRow
 	err := row.Scan(
@@ -162,13 +143,7 @@ WITH
     INSERT INTO shield_user_credentials
       (id, name, user_id, user_credential_key, user_credential_secret)
     VALUES
-      (
-        $1::VARCHAR,
-        'password',
-        $2::VARCHAR,
-        $3,
-        $4
-      )
+      ($1, 'password', $2, $3, $4)
     ON CONFLICT (name, user_credential_key) DO UPDATE
       SET user_credential_secret = $4
     RETURNING id
@@ -178,8 +153,8 @@ FROM credential
 `
 
 type UpsertPasswordCredentialByUserIDParams struct {
-	ID                   string
-	UserID               string
+	ID                   typeid.TypeID
+	UserID               typeid.TypeID
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
@@ -200,7 +175,7 @@ WITH
     INSERT INTO shield_password_reset_tokens
       (id, user_id, token, expires_at, is_used)
     VALUES
-      ($1::VARCHAR, $2, $3, $4, FALSE)
+      ($1, $2, $3, $4, FALSE)
     ON CONFLICT (user_id, is_used) DO UPDATE
       SET expires_at = greatest(
         excluded.expires_at,
@@ -213,7 +188,7 @@ FROM token
 `
 
 type UpsertPasswordResetTokenParams struct {
-	ID        string
+	ID        typeid.TypeID
 	UserID    typeid.TypeID
 	Token     string
 	ExpiresAt time.Time

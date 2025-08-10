@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 )
@@ -15,8 +15,8 @@ import (
 type Session[T any] struct {
 	ExpiresAt time.Time
 	T         *T
-	UserID    uuid.UUID
-	ID        uuid.UUID
+	UserID    typeid.TypeID
+	ID        typeid.TypeID
 }
 
 // Authenticator authenticates the user.

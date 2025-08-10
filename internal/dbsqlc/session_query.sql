@@ -22,13 +22,16 @@ RETURNING id;
 
 -- name: ExpireAllSessionsByUserID :many
 UPDATE shield_user_sessions
-SET expires_at = NOW(), evicted_by = @evicted_by
+SET
+  expires_at = NOW(),
+  evicted_by = @evicted_by
 WHERE user_id = @user_id
 RETURNING id;
 
 -- name: ExpireSomeSessionsByUserID :many
 UPDATE shield_user_sessions
-SET expires_at = NOW(),  evicted_by = @evicted_by
-WHERE user_id = @user_id
-    AND id <> ANY(@session_ids::VARCHAR[])
+SET
+  expires_at = NOW(),
+  evicted_by = @evicted_by
+WHERE user_id = @user_id AND id != ANY (@session_ids::TEXT[])
 RETURNING id;

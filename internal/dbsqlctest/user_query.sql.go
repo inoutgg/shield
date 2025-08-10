@@ -67,10 +67,10 @@ func (q *Queries) TestFindAllUsers(ctx context.Context, db DBTX) ([]ShieldUser, 
 }
 
 const testFindUserByID = `-- name: TestFindUserByID :one
-SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1::VARCHAR LIMIT 1
+SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) TestFindUserByID(ctx context.Context, db DBTX, id string) (ShieldUser, error) {
+func (q *Queries) TestFindUserByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldUser, error) {
 	row := db.QueryRow(ctx, testFindUserByID, id)
 	var i ShieldUser
 	err := row.Scan(

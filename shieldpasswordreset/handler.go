@@ -15,7 +15,7 @@ import (
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/random"
-	"go.inout.gg/shield/internal/uuidv7"
+	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldpassword"
 	"go.inout.gg/shield/shieldsender"
 	"go.inout.gg/shield/shieldsession"
@@ -162,7 +162,7 @@ func (h *Handler) HandlePasswordReset(
 
 	tok, err := dbsqlc.New().
 		UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
-			ID:        uuidv7.Must(),
+			ID:        tid.MustPasswordResetID(),
 			Token:     tokStr,
 			UserID:    user.ID,
 			ExpiresAt: time.Now().Add(h.config.TokenExpiryIn),
@@ -248,7 +248,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 	}
 
 	if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-		ID:                   uuidv7.Must(),
+		ID:                   tid.MustCredentialID(),
 		UserID:               tok.UserID,
 		UserCredentialKey:    user.Email,
 		UserCredentialSecret: passwordHash,
@@ -262,7 +262,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 	// Once password is changed, we need to expire all sessions for this user.
 	if _, err := dbsqlc.New().ExpireAllSessionsByUserID(ctx, tx, dbsqlc.ExpireAllSessionsByUserIDParams{
 		UserID:    user.ID,
-		EvictedBy: user.ID,
+		EvictedBy: &user.ID,
 	}); err != nil {
 		return fmt.Errorf(
 			"shield/passwordreset: failed to expire sessions: %w",

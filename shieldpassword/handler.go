@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.inout.gg/foundations/dbsql"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/pointer"
-	"go.inout.gg/foundations/sqldb"
+	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
-	"go.inout.gg/shield/internal/uuidv7"
+	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldpasswordverifier"
 	"go.inout.gg/shield/shieldsender"
 	"go.inout.gg/shield/shieldsession"
@@ -52,13 +52,13 @@ func (c *Config[U]) assert() {
 type Hooker[U any] interface {
 	// OnUserRegistration is called when registering a new user.
 	// Use this method to create an additional context for the user.
-	OnUserRegistration(context.Context, uuid.UUID, pgx.Tx) (U, error)
+	OnUserRegistration(context.Context, typeid.TypeID, pgx.Tx) (U, error)
 
 	// OnUserLogin is called when a user is trying to login.
 	// Use this method to fetch additional data from the database for the user.
 	//
 	// Note that the user password is not verified at this moment yet.
-	OnUserLogin(context.Context, uuid.UUID, pgx.Tx) (U, error)
+	OnUserLogin(context.Context, typeid.TypeID, pgx.Tx) (U, error)
 }
 
 // NewConfig creates a new config.
@@ -170,7 +170,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 
 	if dbUser.PasswordHash == nil && oldPassword == "" {
 		if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-			ID:                   uuidv7.Must(uuidv7.PrefixCredential),
+			ID:                   tid.MustCredentialID(),
 			UserID:               dbUser.ID,
 			UserCredentialKey:    dbUser.Email,
 			UserCredentialSecret: passwordHash,
@@ -293,14 +293,14 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 	ctx context.Context,
 	email, passwordHash string,
 	tx pgx.Tx,
-) (uuid.UUID, error) {
-	uid := uuidv7.Must()
+) (typeid.TypeID, error) {
+	uid := tid.MustUserID()
 
 	if err := dbsqlc.New().CreateUser(ctx, tx, dbsqlc.CreateUserParams{
 		ID:    uid,
 		Email: email,
 	}); err != nil {
-		if sqldb.IsUniqueViolationError(err) {
+		if dbsql.IsUniqueViolationError(err) {
 			d("email already exists")
 			return uid, ErrEmailAlreadyTaken
 		}
@@ -312,7 +312,7 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 	}
 
 	if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-		ID:                   uuidv7.Must(),
+		ID:                   tid.MustCredentialID(),
 		UserID:               uid,
 		UserCredentialKey:    email,
 		UserCredentialSecret: passwordHash,
@@ -353,7 +353,7 @@ func (h *Handler[U, _]) HandleUserLogin(
 		email,
 	)
 	if err != nil {
-		if sqldb.IsNotFoundError(err) {
+		if dbsql.IsNotFoundError(err) {
 			return user, shield.ErrUserNotFound
 		}
 

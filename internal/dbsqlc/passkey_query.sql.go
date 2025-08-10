@@ -8,24 +8,20 @@ package dbsqlc
 import (
 	"context"
 	"time"
+
+	typeid "go.jetify.com/typeid/v2"
 )
 
 const createUserPasskeyCredential = `-- name: CreateUserPasskeyCredential :exec
 INSERT INTO shield_user_credentials
   (id, name, user_id, user_credential_key, user_credential_secret)
 VALUES
-  (
-    $1::VARCHAR,
-    'passkey',
-    $2::VARCHAR,
-    $3,
-    $4
-  )
+  ($1, 'passkey', $2, $3, $4)
 `
 
 type CreateUserPasskeyCredentialParams struct {
-	ID                   string
-	UserID               string
+	ID                   typeid.TypeID
+	UserID               typeid.TypeID
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
@@ -41,27 +37,17 @@ func (q *Queries) CreateUserPasskeyCredential(ctx context.Context, db DBTX, arg 
 }
 
 const findUserWithPasskeyCredentialByEmail = `-- name: FindUserWithPasskeyCredentialByEmail :one
-WITH
-  credential AS (
-    SELECT user_credential_key, user_credential_secret, user_id
-    FROM shield_user_credentials
-    WHERE name = 'passkey' AND user_credential_key = $1
-  ),
-  "user" AS (
-    SELECT id, created_at, updated_at, email, is_email_verified
-    FROM shield_users
-    WHERE email = $1
-  )
-SELECT "user".id, "user".created_at, "user".updated_at, "user".email, "user".is_email_verified, credential.user_credential_secret::JSON AS user_credential
-FROM
-  credential
-  -- validate that the credential and user has the same email address.
-  JOIN "user"
-    ON credential.user_id = "user".id
+SELECT u.id, u.created_at, u.updated_at, u.email, u.is_email_verified, credential.user_credential_secret::JSON AS user_credential
+FROM shield_users u
+JOIN shield_user_credentials credential
+    ON credential.user_id = u.id
+    AND credential.name = 'passkey'
+    AND credential.user_credential_key = $1
+WHERE u.email = $1
 `
 
 type FindUserWithPasskeyCredentialByEmailRow struct {
-	ID              string
+	ID              typeid.TypeID
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string

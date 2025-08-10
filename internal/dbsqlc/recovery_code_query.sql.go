@@ -12,8 +12,8 @@ import (
 )
 
 type CreateRecoveryCodeBatchParams struct {
-	ID               string
-	UserID           string
+	ID               typeid.TypeID
+	UserID           typeid.TypeID
 	RecoveryCodeHash string
 	IsConsumable     bool
 }
@@ -21,13 +21,13 @@ type CreateRecoveryCodeBatchParams struct {
 const evictUnconsumedRecoveryCodeBatch = `-- name: EvictUnconsumedRecoveryCodeBatch :exec
 UPDATE shield_recovery_codes
 SET
-  evicted_by = $1::VARCHAR,
+  evicted_by = $1,
   evicted_at = NOW()
 WHERE user_id = $2 AND is_consumable = TRUE
 `
 
 type EvictUnconsumedRecoveryCodeBatchParams struct {
-	EvictedBy string
+	EvictedBy *typeid.TypeID
 	UserID    typeid.TypeID
 }
 

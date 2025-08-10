@@ -12,16 +12,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.inout.gg/foundations/dbsql"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httpcookie"
-	"go.inout.gg/foundations/sqldb"
+	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
-	"go.inout.gg/shield/internal/uuidv7"
+	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldsession"
 )
 
@@ -59,12 +59,15 @@ type Hooker[U, S any] interface {
 	// OnLogout allows to hook into the session logout process.
 	OnLogout(
 		ctx context.Context,
-		userID, sessionID uuid.UUID,
+		userID, sessionID typeid.TypeID,
 		tx pgx.Tx,
 	) error
 
 	// OnExpireSessions allows to hook into session expiration process.
-	OnExpireSessions(ctx context.Context, userID, sessionID uuid.UUID) error
+	OnExpireSessions(
+		ctx context.Context,
+		userID, sessionID typeid.TypeID,
+	) error
 }
 
 type Config[U, S any] struct {
@@ -128,7 +131,7 @@ func (s *sessionStrategy[U, S]) Issue(
 	user shield.User[U],
 ) (shieldsession.Session[S], error) {
 	ctx := r.Context()
-	sessionID := uuidv7.Must()
+	sessionID := tid.MustSessionID()
 	expiresAt := time.Now().Add(s.config.ExpiresIn)
 
 	d(
@@ -219,7 +222,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 		return sess, shield.ErrUnauthenticatedUser
 	}
 
-	sessionID, err := uuidv7.FromString(sessionIDStr)
+	sessionID, err := tid.FromString(sessionIDStr)
 	if err != nil {
 		httpcookie.Delete(w, r, s.config.CookieName)
 		return sess, shield.ErrUnauthenticatedUser
@@ -237,7 +240,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 
 	dbSess, err := dbsqlc.New().FindActiveSessionByID(ctx, tx, sessionID)
 	if err != nil {
-		if sqldb.IsNotFoundError(err) {
+		if dbsql.IsNotFoundError(err) {
 			s.config.Logger.ErrorContext(
 				ctx,
 				"No sessions found with the given ID",
@@ -299,8 +302,8 @@ func (s *sessionStrategy[U, S]) ExpireSessions(
 	_, err = dbsqlc.New().
 		ExpireSomeSessionsByUserID(ctx, tx, dbsqlc.ExpireSomeSessionsByUserIDParams{
 			UserID:     sess.UserID,
-			EvictedBy:  sess.UserID,
-			SessionIds: []uuid.UUID{sess.ID},
+			EvictedBy:  &sess.UserID,
+			SessionIds: []string{sess.ID.String()},
 		})
 	if err != nil {
 		return fmt.Errorf(

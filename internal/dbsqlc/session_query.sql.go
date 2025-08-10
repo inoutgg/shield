@@ -73,7 +73,9 @@ func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUser
 
 const expireAllSessionsByUserID = `-- name: ExpireAllSessionsByUserID :many
 UPDATE shield_user_sessions
-SET expires_at = NOW(), evicted_by = $1
+SET
+  expires_at = NOW(),
+  evicted_by = $1
 WHERE user_id = $2
 RETURNING id
 `
@@ -118,9 +120,10 @@ func (q *Queries) ExpireSessionByID(ctx context.Context, db DBTX, id typeid.Type
 
 const expireSomeSessionsByUserID = `-- name: ExpireSomeSessionsByUserID :many
 UPDATE shield_user_sessions
-SET expires_at = NOW(),  evicted_by = $1
-WHERE user_id = $2
-    AND id <> ANY($3::VARCHAR[])
+SET
+  expires_at = NOW(),
+  evicted_by = $1
+WHERE user_id = $2 AND id != ANY ($3::TEXT[])
 RETURNING id
 `
 

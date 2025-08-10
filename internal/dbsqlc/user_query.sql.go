@@ -29,11 +29,11 @@ func (q *Queries) ChangeUserEmailByID(ctx context.Context, db DBTX, arg ChangeUs
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO shield_users (id, email)
-VALUES ($1::VARCHAR, $2)
+VALUES ($1, $2)
 `
 
 type CreateUserParams struct {
-	ID    string
+	ID    typeid.TypeID
 	Email string
 }
 
@@ -60,10 +60,10 @@ func (q *Queries) FindUserByEmail(ctx context.Context, db DBTX, email string) (S
 }
 
 const findUserByID = `-- name: FindUserByID :one
-SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1::VARCHAR LIMIT 1
+SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id string) (ShieldUser, error) {
+func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldUser, error) {
 	row := db.QueryRow(ctx, findUserByID, id)
 	var i ShieldUser
 	err := row.Scan(
@@ -93,7 +93,7 @@ WITH
     INSERT INTO shield_user_email_verification_tokens
       (id, user_id, token, is_used)
     VALUES
-      ($1::VARCHAR, $2, $3, $4, FALSE)
+      ($1, $2, $3, $4, FALSE)
     ON CONFLICT (user_id, is_used) DO NOTHING
     RETURNING token, id
   )
@@ -102,7 +102,7 @@ FROM token
 `
 
 type UpsertEmailVerificationTokenParams struct {
-	ID        string
+	ID        typeid.TypeID
 	UserID    typeid.TypeID
 	Token     string
 	ExpiresAt bool
