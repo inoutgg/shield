@@ -12,5 +12,8 @@ lint-fix:
 format-sql:
   npx prettier -w **/*.sql
 
+gen:
+  go generate ./...
+
 test-all:
   go test -race -count=1 -parallel=4 ./...

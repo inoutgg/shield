@@ -76,3 +76,31 @@ type ShieldUserSession struct {
 	EvictedBy     *typeid.TypeID
 	IsMfaRequired bool
 }
+
+type ShieldWorkspace struct {
+	ID        typeid.TypeID
+	OwnedBy   typeid.TypeID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string
+}
+
+type ShieldWorkspaceMember struct {
+	WorkspaceID typeid.TypeID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	MemberID    typeid.TypeID
+	Metadata    []byte
+}
+
+type ShieldWorkspaceMembershipInvitation struct {
+	ID          typeid.TypeID
+	WorkspaceID typeid.TypeID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	MemberEmail string
+	Status      string
+	ExpiresAt   time.Time
+	AcceptedAt  time.Time
+	RejectedAt  time.Time
+}

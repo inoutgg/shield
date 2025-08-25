@@ -61,8 +61,9 @@ func (q *Queries) FindPasswordResetToken(ctx context.Context, db DBTX, token str
 
 const findUserWithPasswordCredentialByEmail = `-- name: FindUserWithPasswordCredentialByEmail :one
 SELECT u.id, u.created_at, u.updated_at, u.email, u.is_email_verified, credential.user_credential_secret AS password_hash
-FROM shield_users u
-JOIN shield_user_credentials credential
+FROM
+  shield_users AS u
+  JOIN shield_user_credentials AS credential
     ON credential.user_id = u.id
     AND credential.name = 'password'
     AND credential.user_credential_key = $1

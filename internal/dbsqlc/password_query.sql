@@ -14,13 +14,13 @@ FROM credential;
 
 -- name: FindUserWithPasswordCredentialByEmail :one
 SELECT u.*, credential.user_credential_secret AS password_hash
-FROM shield_users u
-JOIN shield_user_credentials credential
+FROM
+  shield_users AS u
+  JOIN shield_user_credentials AS credential
     ON credential.user_id = u.id
     AND credential.name = 'password'
     AND credential.user_credential_key = @email
 WHERE u.email = @email;
-
 
 -- name: FindUserWithPasswordCredentialByUserID :one
 SELECT shield_user.*, credential.user_credential_secret AS password_hash

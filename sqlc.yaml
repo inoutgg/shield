@@ -8,6 +8,7 @@ sql:
       - "internal/dbsqlc/recovery_code_query.sql"
       - "internal/dbsqlc/user_query.sql"
       - "internal/dbsqlc/mfa_query.sql"
+      - "internal/dbsqlc/workspace_query.sql"
     engine: "postgresql"
     gen:
       go: &x-common-gen-go
@@ -122,6 +123,42 @@ sql:
               package: "typeid"
               type: "TypeID"
           - column: "shield_user_mfas.user_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
+          ### shield_workspaces ###
+          - column: "shield_workspaces.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_workspaces.owned_by"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
+          ### shield_workspace_members ###
+          - column: "shield_workspace_members.workspace_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_workspace_members.member_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
+          ### shield_workspace_membership_invitations ###
+          - column: "shield_workspace_membership_invitations.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_workspace_membership_invitations.workspace_id"
             go_type:
               import: "go.jetify.com/typeid/v2"
               package: "typeid"

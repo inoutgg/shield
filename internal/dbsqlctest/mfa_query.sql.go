@@ -12,15 +12,11 @@ import (
 )
 
 const createUserMFA = `-- name: CreateUserMFA :one
-INSERT INTO shield_user_mfas (
-    id,
-    user_id,
-    name
-) VALUES (
-    $1,
-    $2,
-    $3
-) RETURNING id, created_at, updated_at, name, user_id
+INSERT INTO shield_user_mfas
+  (id, user_id, name)
+VALUES
+  ($1, $2, $3)
+RETURNING id, created_at, updated_at, name, user_id
 `
 
 type CreateUserMFAParams struct {

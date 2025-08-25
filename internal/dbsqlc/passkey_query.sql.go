@@ -38,8 +38,9 @@ func (q *Queries) CreateUserPasskeyCredential(ctx context.Context, db DBTX, arg 
 
 const findUserWithPasskeyCredentialByEmail = `-- name: FindUserWithPasskeyCredentialByEmail :one
 SELECT u.id, u.created_at, u.updated_at, u.email, u.is_email_verified, credential.user_credential_secret::JSON AS user_credential
-FROM shield_users u
-JOIN shield_user_credentials credential
+FROM
+  shield_users AS u
+  JOIN shield_user_credentials AS credential
     ON credential.user_id = u.id
     AND credential.name = 'passkey'
     AND credential.user_credential_key = $1

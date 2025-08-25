@@ -16,6 +16,9 @@ const (
 
 	// shielduser.
 	MessageKeyEmailChange MessageKey = "message_key_email_change"
+
+	// shieldworkspace.
+	MessageKeyWorkspaceInvite MessageKey = "message_key_workspace_invite"
 )
 
 // Message is a message to be sent.

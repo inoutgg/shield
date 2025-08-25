@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS shield_user_mfas (
   CHECK (name IN ('mfa_passkey', 'mfa_email', 'mfa_otp'))
 );
 
-ALTER TABLE shield_user_sessions ADD COLUMN is_mfa_required BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE shield_user_sessions
+ADD COLUMN is_mfa_required BOOLEAN NOT NULL DEFAULT FALSE;
 
 ---- create above / drop below ----
 

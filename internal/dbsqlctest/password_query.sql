@@ -2,11 +2,5 @@
 INSERT INTO shield_user_credentials
   (id, name, user_id, user_credential_key, user_credential_secret)
 VALUES
-  (
-    @id,
-    'password',
-    @user_id,
-    @user_credential_key,
-    @user_credential_secret
-  )
+  (@id, 'password', @user_id, @user_credential_key, @user_credential_secret)
 RETURNING *;

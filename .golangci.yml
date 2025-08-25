@@ -18,7 +18,7 @@ formatters:
           replacement: "any"
 
     golines:
-      max-len: 80
+      max-len: 100
       tab-len: 8
 
     gci:

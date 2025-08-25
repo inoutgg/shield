@@ -11,18 +11,27 @@ import (
 type prefix string
 
 var (
-	PrefixUser          = prefix("user") //nolint:gochecknoglobals
-	PrefixCredential    = prefix("cred") //nolint:gochecknoglobals
-	PrefixSession       = prefix("sess") //nolint:gochecknoglobals
-	PrefixRecoveryKey   = prefix("rk")   //nolint:gochecknoglobals
-	PrefixPasswordReset = prefix("prk")  //nolint:gochecknoglobals
+	PrefixUser                      = prefix("user") //nolint:gochecknoglobals
+	PrefixCredential                = prefix("cred") //nolint:gochecknoglobals
+	PrefixSession                   = prefix("sess") //nolint:gochecknoglobals
+	PrefixRecoveryKey               = prefix("rk")   //nolint:gochecknoglobals
+	PrefixPasswordReset             = prefix("prk")  //nolint:gochecknoglobals
+	PrefixWorkspace                 = prefix("ws")   //nolint:gochecknoglobals
+	PrefixWorkspaceInvitation       = prefix("wsi")  //nolint:gochecknoglobals
+	PrefixWorkspaceMember           = prefix("wsm")  //nolint:gochecknoglobals
+	PrefixWorkspaceMemberInvitation = prefix("wsim") //nolint:gochecknoglobals
 )
 
-func MustUserID() typeid.TypeID          { return Must(PrefixUser) }
-func MustCredentialID() typeid.TypeID    { return Must(PrefixCredential) }
-func MustSessionID() typeid.TypeID       { return Must(PrefixSession) }
-func MustRecoveryKeyID() typeid.TypeID   { return Must(PrefixRecoveryKey) }
-func MustPasswordResetID() typeid.TypeID { return Must(PrefixPasswordReset) }
+func MustUserID() typeid.TypeID                { return Must(PrefixUser) }
+func MustCredentialID() typeid.TypeID          { return Must(PrefixCredential) }
+func MustSessionID() typeid.TypeID             { return Must(PrefixSession) }
+func MustRecoveryKeyID() typeid.TypeID         { return Must(PrefixRecoveryKey) }
+func MustPasswordResetID() typeid.TypeID       { return Must(PrefixPasswordReset) }
+func MustWorkspaceID() typeid.TypeID           { return Must(PrefixWorkspace) }
+func MustWorkspaceInvitationID() typeid.TypeID { return Must(PrefixWorkspaceInvitation) }
+func MustWorkspaceMemberID() typeid.TypeID     { return Must(PrefixWorkspaceMember) }
+
+func MustWorkspaceMemberInvitationID() typeid.TypeID { return Must(PrefixWorkspaceMemberInvitation) }
 
 // Must returns a new random UUID. It panics if there is an error.
 func Must(prefix prefix) typeid.TypeID {
