@@ -9,36 +9,22 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
+	typeid "go.jetify.com/typeid/v2"
 )
 
-const createUserPasswordCredential = `-- name: CreateUserPasswordCredential :exec
-INSERT INTO shield_user_credentials
-  (id, name, user_id, user_credential_key, user_credential_secret)
-VALUES
-  (
-    $1::UUID,
-    'password',
-    $2::UUID,
-    $3,
-    $4
-  )
+const changePasswordCredentialEmailByUserID = `-- name: ChangePasswordCredentialEmailByUserID :exec
+UPDATE shield_user_credentials
+SET user_credential_key = $1
+WHERE user_id = $2 AND name = 'password'
 `
 
-type CreateUserPasswordCredentialParams struct {
-	ID                   uuid.UUID
-	UserID               uuid.UUID
-	UserCredentialKey    string
-	UserCredentialSecret string
+type ChangePasswordCredentialEmailByUserIDParams struct {
+	Email  string
+	UserID typeid.TypeID
 }
 
-func (q *Queries) CreateUserPasswordCredential(ctx context.Context, db DBTX, arg CreateUserPasswordCredentialParams) error {
-	_, err := db.Exec(ctx, createUserPasswordCredential,
-		arg.ID,
-		arg.UserID,
-		arg.UserCredentialKey,
-		arg.UserCredentialSecret,
-	)
+func (q *Queries) ChangePasswordCredentialEmailByUserID(ctx context.Context, db DBTX, arg ChangePasswordCredentialEmailByUserIDParams) error {
+	_, err := db.Exec(ctx, changePasswordCredentialEmailByUserID, arg.Email, arg.UserID)
 	return err
 }
 
@@ -74,27 +60,18 @@ func (q *Queries) FindPasswordResetToken(ctx context.Context, db DBTX, token str
 }
 
 const findUserWithPasswordCredentialByEmail = `-- name: FindUserWithPasswordCredentialByEmail :one
-WITH
-  credential AS (
-    SELECT user_credential_key, user_credential_secret, user_id
-    FROM shield_user_credentials
-    WHERE name = 'password' AND user_credential_key = $1
-  ),
-  "user" AS (
-    SELECT id, created_at, updated_at, email, is_email_verified
-    FROM shield_users
-    WHERE email = $1
-  )
-SELECT "user".id, "user".created_at, "user".updated_at, "user".email, "user".is_email_verified, credential.user_credential_secret AS password_hash
+SELECT u.id, u.created_at, u.updated_at, u.email, u.is_email_verified, credential.user_credential_secret AS password_hash
 FROM
-  credential
-  -- validate that the credential and user has the same email address.
-  JOIN "user"
-    ON credential.user_id = "user".id
+  shield_users AS u
+  JOIN shield_user_credentials AS credential
+    ON credential.user_id = u.id
+    AND credential.name = 'password'
+    AND credential.user_credential_key = $1
+WHERE u.email = $1
 `
 
 type FindUserWithPasswordCredentialByEmailRow struct {
-	ID              uuid.UUID
+	ID              typeid.TypeID
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -105,6 +82,40 @@ type FindUserWithPasswordCredentialByEmailRow struct {
 func (q *Queries) FindUserWithPasswordCredentialByEmail(ctx context.Context, db DBTX, email string) (FindUserWithPasswordCredentialByEmailRow, error) {
 	row := db.QueryRow(ctx, findUserWithPasswordCredentialByEmail, email)
 	var i FindUserWithPasswordCredentialByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.IsEmailVerified,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
+const findUserWithPasswordCredentialByUserID = `-- name: FindUserWithPasswordCredentialByUserID :one
+SELECT shield_user.id, shield_user.created_at, shield_user.updated_at, shield_user.email, shield_user.is_email_verified, credential.user_credential_secret AS password_hash
+FROM
+  shield_users AS shield_user
+  LEFT JOIN shield_user_credentials AS credential
+    ON credential.user_id = shield_user.id
+    AND credential.name = 'password'
+    AND credential.user_credential_key = shield_user.email
+WHERE shield_user.id = $1
+`
+
+type FindUserWithPasswordCredentialByUserIDRow struct {
+	ID              typeid.TypeID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	Email           string
+	IsEmailVerified bool
+	PasswordHash    *string
+}
+
+func (q *Queries) FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID typeid.TypeID) (FindUserWithPasswordCredentialByUserIDRow, error) {
+	row := db.QueryRow(ctx, findUserWithPasswordCredentialByUserID, userID)
+	var i FindUserWithPasswordCredentialByUserIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -133,13 +144,7 @@ WITH
     INSERT INTO shield_user_credentials
       (id, name, user_id, user_credential_key, user_credential_secret)
     VALUES
-      (
-        $1::UUID,
-        'password',
-        $2::UUID,
-        $3,
-        $4
-      )
+      ($1, 'password', $2, $3, $4)
     ON CONFLICT (name, user_credential_key) DO UPDATE
       SET user_credential_secret = $4
     RETURNING id
@@ -149,8 +154,8 @@ FROM credential
 `
 
 type UpsertPasswordCredentialByUserIDParams struct {
-	ID                   uuid.UUID
-	UserID               uuid.UUID
+	ID                   typeid.TypeID
+	UserID               typeid.TypeID
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
@@ -171,7 +176,7 @@ WITH
     INSERT INTO shield_password_reset_tokens
       (id, user_id, token, expires_at, is_used)
     VALUES
-      ($1::UUID, $2, $3, $4, FALSE)
+      ($1, $2, $3, $4, FALSE)
     ON CONFLICT (user_id, is_used) DO UPDATE
       SET expires_at = greatest(
         excluded.expires_at,
@@ -184,15 +189,15 @@ FROM token
 `
 
 type UpsertPasswordResetTokenParams struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
+	ID        typeid.TypeID
+	UserID    typeid.TypeID
 	Token     string
 	ExpiresAt time.Time
 }
 
 type UpsertPasswordResetTokenRow struct {
 	Token     string
-	ID        uuid.UUID
+	ID        string
 	ExpiresAt time.Time
 }
 

@@ -14,9 +14,12 @@ func TestFilter(t *testing.T) {
 	t.Run("Filter should work", func(t *testing.T) {
 		t.Parallel()
 
-		result := sliceutil.Filter([]string{"even", "odd", "even"}, func(v string) bool {
-			return v == "odd"
-		})
+		result := sliceutil.Filter(
+			[]string{"even", "odd", "even"},
+			func(v string) bool {
+				return v == "odd"
+			},
+		)
 
 		assert.Equal(t, []string{"odd"}, result)
 	})
@@ -46,6 +49,43 @@ func TestFilter(t *testing.T) {
 
 		result := sliceutil.Filter([]int{}, func(int) bool {
 			return true
+		})
+
+		assert.Equal(t, []int{}, result)
+	})
+}
+
+func TestMap(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Map should work", func(t *testing.T) {
+		t.Parallel()
+
+		result := sliceutil.Map(
+			[]string{"even", "odd", "even"},
+			func(v string) string {
+				return v + "!"
+			},
+		)
+
+		assert.Equal(t, []string{"even!", "odd!", "even!"}, result)
+	})
+
+	t.Run("Map should keep the slice", func(t *testing.T) {
+		t.Parallel()
+
+		result := sliceutil.Map([]int{1, 2, 3, 4}, func(v int) int {
+			return v
+		})
+
+		assert.Equal(t, []int{1, 2, 3, 4}, result)
+	})
+
+	t.Run("Map should handle empty slice", func(t *testing.T) {
+		t.Parallel()
+
+		result := sliceutil.Map([]int{}, func(int) int {
+			return 0
 		})
 
 		assert.Equal(t, []int{}, result)

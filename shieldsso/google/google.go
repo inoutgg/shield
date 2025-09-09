@@ -7,10 +7,10 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
-	"go.inout.gg/shield/shieldsso"
+	"go.inout.gg/shield/shieldsso/internal/sso"
 )
 
-var _ shieldsso.Provider[any] = (*provider[any])(nil)
+var _ sso.Provider[any] = (*provider[any])(nil)
 
 const Issuer = "https://accounts.google.com"
 
@@ -33,7 +33,10 @@ type provider[T any] struct {
 }
 
 // NewProvider creates a new OpenID OAuth2 provider.
-func NewProvider[T any](ctx context.Context, cfg *Config) (shieldsso.Provider[T], error) {
+func NewProvider[T any](
+	ctx context.Context,
+	cfg *Config,
+) (sso.Provider[T], error) {
 	oidcProvider, err := oidc.NewProvider(ctx, Issuer)
 	if err != nil {
 		// TODO(roman@vanesyan.com): fix it
@@ -55,7 +58,10 @@ func NewProvider[T any](ctx context.Context, cfg *Config) (shieldsso.Provider[T]
 	}, nil
 }
 
-func (p *provider[T]) UserInfo(ctx context.Context, token *oauth2.Token) (shieldsso.UserInfo[T], error) {
+func (p *provider[T]) UserInfo(
+	ctx context.Context,
+	token *oauth2.Token,
+) (sso.UserInfo[T], error) {
 	// TODO(roman@vanesyan.com): use userInfo.
 	_, err := p.provider.UserInfo(ctx, p.config.TokenSource(ctx, token))
 	if err != nil {
@@ -70,7 +76,10 @@ func (p *provider[T]) UserInfo(ctx context.Context, token *oauth2.Token) (shield
 	return nil, nil
 }
 
-func (p *provider[T]) ExchangeCode(ctx context.Context, code string) (*oauth2.Token, error) {
+func (p *provider[T]) ExchangeCode(
+	ctx context.Context,
+	code string,
+) (*oauth2.Token, error) {
 	// TODO(roman@vanesyan.com): fix it
 	//nolint:wrapcheck
 	return p.config.Exchange(ctx, code)

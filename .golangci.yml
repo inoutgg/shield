@@ -18,7 +18,7 @@ formatters:
           replacement: "any"
 
     golines:
-      max-len: 120
+      max-len: 100
       tab-len: 8
 
     gci:
@@ -107,6 +107,7 @@ linters:
         - a # comparison argument
         - b # comparison argument, bytes, buffer
         - ch # channel
+        - d # debug
         - db # database
         - e # event
         - ev # event

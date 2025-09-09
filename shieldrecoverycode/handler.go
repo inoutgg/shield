@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
+	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/random"
-	"go.inout.gg/shield/internal/uuidv7"
+	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldpassword"
 )
 
@@ -44,7 +44,10 @@ func (g *generator) Generate(count, length int) ([]string, error) {
 	for i := range count {
 		code, err := random.SecureHexString(length)
 		if err != nil {
-			return nil, fmt.Errorf("shieldrecoverycode: failed to generate recovery code: %w", err)
+			return nil, fmt.Errorf(
+				"shieldrecoverycode: failed to generate recovery code: %w",
+				err,
+			)
 		}
 
 		codes[i] = code
@@ -62,16 +65,28 @@ type Config struct {
 }
 
 func (c *Config) defaults() {
-	c.PasswordHasher = cmp.Or(c.PasswordHasher, shieldpassword.DefaultPasswordHasher)
+	c.PasswordHasher = cmp.Or(
+		c.PasswordHasher,
+		shieldpassword.DefaultPasswordHasher,
+	)
 	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
-	c.RecoveryCodeTotalCount = cmp.Or(c.RecoveryCodeTotalCount, DefaultRecoveryCodeTotalCount)
-	c.RecoveryCodeLength = cmp.Or(c.RecoveryCodeLength, DefaultRecoveryCodeLength)
+	c.RecoveryCodeTotalCount = cmp.Or(
+		c.RecoveryCodeTotalCount,
+		DefaultRecoveryCodeTotalCount,
+	)
+	c.RecoveryCodeLength = cmp.Or(
+		c.RecoveryCodeLength,
+		DefaultRecoveryCodeLength,
+	)
 	c.Generator = cmp.Or(c.Generator, DefaultGenerator)
 }
 
 func (c *Config) assert() {
 	debug.Assert(c.Logger != nil, "expected Logger to be defined")
-	debug.Assert(c.PasswordHasher != nil, "expected PasswordHasher to be defined")
+	debug.Assert(
+		c.PasswordHasher != nil,
+		"expected PasswordHasher to be defined",
+	)
 	debug.Assert(c.Generator != nil, "expected Generator to be defined")
 }
 
@@ -110,9 +125,15 @@ func (h *Handler) assert() {
 }
 
 func (h *Handler) Generate() ([]string, error) {
-	codes, err := h.config.Generator.Generate(h.config.RecoveryCodeTotalCount, h.config.RecoveryCodeLength)
+	codes, err := h.config.Generator.Generate(
+		h.config.RecoveryCodeTotalCount,
+		h.config.RecoveryCodeLength,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("shieldrecoverycode: failed to generate recovery codes: %w", err)
+		return nil, fmt.Errorf(
+			"shieldrecoverycode: failed to generate recovery codes: %w",
+			err,
+		)
 	}
 
 	hashedCodes := make([]string, len(codes))
@@ -120,7 +141,10 @@ func (h *Handler) Generate() ([]string, error) {
 	for i, code := range codes {
 		hashedCode, err := h.config.PasswordHasher.Hash(code)
 		if err != nil {
-			return nil, fmt.Errorf("shieldrecoverycode: failed to hash recovery code: %w", err)
+			return nil, fmt.Errorf(
+				"shieldrecoverycode: failed to hash recovery code: %w",
+				err,
+			)
 		}
 
 		hashedCodes[i] = hashedCode
@@ -130,7 +154,10 @@ func (h *Handler) Generate() ([]string, error) {
 }
 
 // CreateRecoveryCodes generates a new set of recovery codes.
-func (h *Handler) CreateRecoveryCodes(ctx context.Context, userID uuid.UUID) error {
+func (h *Handler) CreateRecoveryCodes(
+	ctx context.Context,
+	userID typeid.TypeID,
+) error {
 	codes, err := h.Generate()
 	if err != nil {
 		return err
@@ -138,7 +165,10 @@ func (h *Handler) CreateRecoveryCodes(ctx context.Context, userID uuid.UUID) err
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("shield/recovery_code: failed to begin transaction: %w", err)
+		return fmt.Errorf(
+			"shield/recovery_code: failed to begin transaction: %w",
+			err,
+		)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -148,14 +178,21 @@ func (h *Handler) CreateRecoveryCodes(ctx context.Context, userID uuid.UUID) err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("shield/recovery_code: failed to commit transaction: %w", err)
+		return fmt.Errorf(
+			"shield/recovery_code: failed to commit transaction: %w",
+			err,
+		)
 	}
 
 	return nil
 }
 
 // userID is the ID of the user to update recovery codes for.
-func (h *Handler) ReplaceRecoveryCodes(ctx context.Context, userID, replacedBy uuid.UUID) error {
+func (h *Handler) ReplaceRecoveryCodes(
+	ctx context.Context,
+	userID typeid.TypeID,
+	replacedBy *typeid.TypeID,
+) error {
 	codes, err := h.Generate()
 	if err != nil {
 		return err
@@ -163,7 +200,10 @@ func (h *Handler) ReplaceRecoveryCodes(ctx context.Context, userID, replacedBy u
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("shield/recovery_code: failed to begin transaction: %w", err)
+		return fmt.Errorf(
+			"shield/recovery_code: failed to begin transaction: %w",
+			err,
+		)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -173,7 +213,10 @@ func (h *Handler) ReplaceRecoveryCodes(ctx context.Context, userID, replacedBy u
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("shield/recovery_code: failed to commit transaction: %w", err)
+		return fmt.Errorf(
+			"shield/recovery_code: failed to commit transaction: %w",
+			err,
+		)
 	}
 
 	return nil
@@ -181,8 +224,8 @@ func (h *Handler) ReplaceRecoveryCodes(ctx context.Context, userID, replacedBy u
 
 func (h *Handler) ReplaceRecoveryCodesInTx(
 	ctx context.Context,
-	userID uuid.UUID,
-	replacedBy uuid.UUID,
+	userID typeid.TypeID,
+	replacedBy *typeid.TypeID,
 	codes []string,
 	tx pgx.Tx,
 ) error {
@@ -199,13 +242,19 @@ func (h *Handler) ReplaceRecoveryCodesInTx(
 
 func (h *Handler) EvictRecoveryCodesInTx(
 	ctx context.Context,
-	userID uuid.UUID,
-	evictedBy uuid.UUID,
+	userID typeid.TypeID,
+	evictedBy *typeid.TypeID,
 	tx pgx.Tx,
 ) error {
-	arg := dbsqlc.EvictUnconsumedRecoveryCodeBatchParams{UserID: userID, EvictedBy: evictedBy}
+	arg := dbsqlc.EvictUnconsumedRecoveryCodeBatchParams{
+		UserID:    userID,
+		EvictedBy: evictedBy,
+	}
 	if err := dbsqlc.New().EvictUnconsumedRecoveryCodeBatch(ctx, tx, arg); err != nil {
-		return fmt.Errorf("shield/recovery_code: failed to evict recovery codes: %w", err)
+		return fmt.Errorf(
+			"shield/recovery_code: failed to evict recovery codes: %w",
+			err,
+		)
 	}
 
 	return nil
@@ -213,14 +262,14 @@ func (h *Handler) EvictRecoveryCodesInTx(
 
 func (h *Handler) CreateRecoveryCodesInTx(
 	ctx context.Context,
-	userID uuid.UUID,
+	userID typeid.TypeID,
 	codes []string,
 	tx pgx.Tx,
 ) error {
 	rows := make([]dbsqlc.CreateRecoveryCodeBatchParams, len(codes))
 	for i, code := range codes {
 		rows[i] = dbsqlc.CreateRecoveryCodeBatchParams{
-			ID:               uuidv7.Must(),
+			ID:               tid.MustRecoveryKeyID(),
 			IsConsumable:     true,
 			RecoveryCodeHash: code,
 			UserID:           userID,
@@ -228,7 +277,10 @@ func (h *Handler) CreateRecoveryCodesInTx(
 	}
 
 	if _, err := dbsqlc.New().CreateRecoveryCodeBatch(ctx, tx, rows); err != nil {
-		return fmt.Errorf("shield/recovery_code: failed to create recovery codes: %w", err)
+		return fmt.Errorf(
+			"shield/recovery_code: failed to create recovery codes: %w",
+			err,
+		)
 	}
 
 	return nil

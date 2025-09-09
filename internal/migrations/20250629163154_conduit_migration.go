@@ -7,8 +7,10 @@ import (
 	"go.inout.gg/conduit/conduitmigrate"
 )
 
-//nolint:exhaustruct
-var m20250629163154 = conduitmigrate.New(&conduitmigrate.Config{}) //nolint:gochecknoglobals
+//nolint:exhaustruct,gochecknoglobals
+var m20250629163154 = conduitmigrate.New(
+	&conduitmigrate.Config{},
+)
 
 //nolint:gochecknoinits
 func init() {
