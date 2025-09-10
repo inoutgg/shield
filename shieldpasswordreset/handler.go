@@ -50,21 +50,6 @@ type Config struct {
 	TokenExpiryIn time.Duration // optional
 }
 
-func (c *Config) defaults() {
-	c.TokenExpiryIn = cmp.Or(c.TokenExpiryIn, DefaultResetTokenExpiry)
-	c.TokenLength = cmp.Or(c.TokenLength, DefaultResetTokenLength)
-	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
-	c.PasswordHasher = cmp.Or(
-		c.PasswordHasher,
-		shieldpassword.DefaultPasswordHasher,
-	)
-}
-
-func (c *Config) assert() {
-	debug.Assert(c.PasswordHasher != nil, "PasswordHasher must be set")
-	debug.Assert(c.Logger != nil, "Logger must be set")
-}
-
 // NewConfig creates a new config.
 func NewConfig(opts ...func(*Config)) *Config {
 	//nolint:exhaustruct
@@ -80,6 +65,21 @@ func NewConfig(opts ...func(*Config)) *Config {
 	config.assert()
 
 	return config
+}
+
+func (c *Config) defaults() {
+	c.TokenExpiryIn = cmp.Or(c.TokenExpiryIn, DefaultResetTokenExpiry)
+	c.TokenLength = cmp.Or(c.TokenLength, DefaultResetTokenLength)
+	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
+	c.PasswordHasher = cmp.Or(
+		c.PasswordHasher,
+		shieldpassword.DefaultPasswordHasher,
+	)
+}
+
+func (c *Config) assert() {
+	debug.Assert(c.PasswordHasher != nil, "PasswordHasher must be set")
+	debug.Assert(c.Logger != nil, "Logger must be set")
 }
 
 // WithPasswordHasher configures the password hasher.
@@ -123,11 +123,6 @@ func NewHandler(
 	h.assert()
 
 	return &h
-}
-
-func (h *Handler) assert() {
-	debug.Assert(h.pool != nil, "pool must be set")
-	debug.Assert(h.sender != nil, "sender must be set")
 }
 
 // HandlePasswordReset handles a password reset request.
@@ -289,4 +284,9 @@ func (h *Handler) HandlePasswordResetConfirm(
 	}
 
 	return nil
+}
+
+func (h *Handler) assert() {
+	debug.Assert(h.pool != nil, "pool must be set")
+	debug.Assert(h.sender != nil, "sender must be set")
 }

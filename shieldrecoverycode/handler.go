@@ -64,6 +64,19 @@ type Config struct {
 	RecoveryCodeLength     int
 }
 
+func NewConfig(opts ...func(*Config)) *Config {
+	//nolint:exhaustruct
+	cfg := &Config{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	cfg.defaults()
+	cfg.assert()
+
+	return cfg
+}
+
 func (c *Config) defaults() {
 	c.PasswordHasher = cmp.Or(
 		c.PasswordHasher,
@@ -90,19 +103,6 @@ func (c *Config) assert() {
 	debug.Assert(c.Generator != nil, "expected Generator to be defined")
 }
 
-func NewConfig(opts ...func(*Config)) *Config {
-	//nolint:exhaustruct
-	cfg := &Config{}
-	for _, opt := range opts {
-		opt(cfg)
-	}
-
-	cfg.defaults()
-	cfg.assert()
-
-	return cfg
-}
-
 type Handler struct {
 	config *Config
 	pool   *pgxpool.Pool
@@ -117,11 +117,6 @@ func New(pool *pgxpool.Pool, config *Config) *Handler {
 	h.assert()
 
 	return &h
-}
-
-func (h *Handler) assert() {
-	h.config.assert()
-	debug.Assert(h.pool != nil, "expected pool to be defined")
 }
 
 func (h *Handler) Generate() ([]string, error) {
@@ -284,4 +279,9 @@ func (h *Handler) CreateRecoveryCodesInTx(
 	}
 
 	return nil
+}
+
+func (h *Handler) assert() {
+	h.config.assert()
+	debug.Assert(h.pool != nil, "expected pool to be defined")
 }

@@ -1,4 +1,4 @@
-// uuidv7 is a wrapper around google's uuid package.
+// tid is a wrapper around typeid to expose shield specific IDs.
 package tid
 
 import (

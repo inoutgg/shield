@@ -9,6 +9,7 @@ import (
 // secureBytes returns a securely random byte slice of length l.
 func secureBytes(l int) ([]byte, error) {
 	bytes := make([]byte, l)
+
 	_, err := rand.Read(bytes)
 	if err != nil {
 		return bytes, fmt.Errorf(

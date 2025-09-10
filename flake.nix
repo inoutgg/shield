@@ -18,7 +18,7 @@
           buildInputs = with pkgs; [
             # Runtimes
             nodejs
-            go
+            go_1_25
 
             # Tooling
             sqlc
