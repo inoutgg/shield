@@ -206,6 +206,10 @@ func (s *sessionStrategy[U, S]) Issue(
 		httpcookie.WithExpiresIn(s.config.ExpiresIn),
 	)
 
+	if isMFARequired {
+		return sess, shield.ErrMFARequired
+	}
+
 	return sess, nil
 }
 

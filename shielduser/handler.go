@@ -11,6 +11,8 @@ import (
 	"go.inout.gg/shield/shieldsession"
 )
 
+// Handler handles user management operations, such as changing email addresses,
+// etc.
 type Handler[S any] struct {
 	pool   *pgxpool.Pool
 	sender shieldsender.Sender

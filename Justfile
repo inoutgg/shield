@@ -1,9 +1,12 @@
+export PARALLEL_CNT := $(nproc --all)
+
 setup:
     lefthook install -f
 
 mod:
-    go mod download
     go mod tidy
+    go mod download
+    gomod2nix
 
 lint-fix:
   typos -w

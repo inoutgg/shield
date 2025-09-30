@@ -23,8 +23,8 @@ import (
 )
 
 var (
-	ErrEmailAlreadyTaken = errors.New(
-		"shield/password: email already taken",
+	ErrUserExists = errors.New(
+		"shield/password: user already exists",
 	)
 	ErrPasswordIncorrect = errors.New("shield/password: password incorrect")
 )
@@ -302,7 +302,7 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 	}); err != nil {
 		if dbsql.IsUniqueViolationError(err) {
 			d("email already exists")
-			return uid, ErrEmailAlreadyTaken
+			return uid, ErrUserExists
 		}
 
 		return uid, fmt.Errorf(
