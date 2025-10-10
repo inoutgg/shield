@@ -31,7 +31,9 @@ func MustWorkspaceID() typeid.TypeID           { return Must(PrefixWorkspace) }
 func MustWorkspaceInvitationID() typeid.TypeID { return Must(PrefixWorkspaceInvitation) }
 func MustWorkspaceMemberID() typeid.TypeID     { return Must(PrefixWorkspaceMember) }
 
-func MustWorkspaceMemberInvitationID() typeid.TypeID { return Must(PrefixWorkspaceMemberInvitation) }
+func MustWorkspaceMemberInvitationID() typeid.TypeID {
+	return Must(PrefixWorkspaceMemberInvitation)
+}
 
 // Must returns a new random UUID. It panics if there is an error.
 func Must(prefix prefix) typeid.TypeID {

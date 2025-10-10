@@ -6,6 +6,8 @@
     nixpkgs.url = "github:cachix/devenv-nixpkgs/rolling";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-root.url = "github:srid/flake-root";
+    git-hooks-nix.url = "github:cachix/git-hooks.nix";
     gomod2nix = {
       url = "github:nix-community/gomod2nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -31,7 +33,9 @@
       ];
 
       imports = [
+        inputs.flake-root.flakeModule
         inputs.devenv.flakeModule
+        inputs.git-hooks-nix.flakeModule
         inputs.treefmt-nix.flakeModule
       ];
 
@@ -48,28 +52,63 @@
           formatter = config.treefmt.build.wrapper;
 
           treefmt.config = {
-            # inherit (config.flake-root) projectRootfile;
+            inherit (config.flake-root) projectRootFile;
             package = pkgs.treefmt;
 
             programs = {
               nixfmt.enable = true;
-              gofumpt.enable = true;
-              # prettier.enable = true;
+              gofumpt = {
+                enable = true;
+                excludes = [
+                  "*_mock.go"
+                  "*.sql.go"
+                ];
+              };
+              typos.enable = true;
             };
           };
 
           devenv.shells.default = {
             containers = lib.mkForce { };
 
+            git-hooks = {
+              hooks = {
+                gen = {
+                  enable = true;
+                  name = "gen";
+                  description = "Code generation";
+                  entry = "${lib.getExe pkgs.just} gen";
+                  pass_filenames = false;
+                  files = "\\.(go|mod)$";
+                };
+
+                format = {
+                  after = [ "gen" ];
+                  enable = true;
+                  name = "format";
+                  description = "Code formatting";
+                  entry = "${lib.getExe pkgs.just} format";
+                  pass_filenames = false;
+                };
+
+                lint = {
+                  after = [ "format" ];
+                  enable = true;
+                  name = "lint";
+                  description = "Lint checks";
+                  entry = "${lib.getExe pkgs.just} lint-fix";
+                  pass_filenames = false;
+                };
+              };
+            };
+
             packages = with pkgs; [
-              pgbouncer
               gomod2nix.packages.${system}.default
+              golangci-lint
+              mockgen
 
               sqlc
-              watchexec
               just
-              lefthook
-              typos
             ];
 
             env.GOTOOLCHAIN = "local";
@@ -88,7 +127,7 @@
               enable = true;
               package = pkgs.postgresql_17;
               initialScript = ''
-                CREATE USER postgres SUPERUSER PASSWORD 'postgres';
+                CREATE USER test SUPERUSER PASSWORD 'test';
               '';
               listen_addresses = "127.0.0.1";
               port = 6432;

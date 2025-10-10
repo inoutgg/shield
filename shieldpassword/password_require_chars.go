@@ -1,4 +1,4 @@
-package shieldpasswordverifier
+package shieldpassword
 
 import (
 	"strings"
@@ -8,8 +8,7 @@ import (
 	"go.inout.gg/shield/internal/sliceutil"
 )
 
-//nolint:gochecknoglobals
-var DefaultPasswordRequiredChars PasswordRequiredChars
+var DefaultPasswordRequiredChars PasswordRequiredChars //nolint:gochecknoglobals
 
 //nolint:gochecknoinits
 func init() {

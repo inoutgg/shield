@@ -33,7 +33,7 @@ func (h *bcryptPasswordHasher) Hash(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword(passwordBytes, h.cost)
 	if err != nil {
 		return "", fmt.Errorf(
-			"shield/password: unable to generate a bcrypt hash: %w",
+			"shieldpassword: unable to generate a bcrypt hash: %w",
 			err,
 		)
 	}
@@ -52,7 +52,7 @@ func (h *bcryptPasswordHasher) Verify(
 		}
 
 		return false, fmt.Errorf(
-			"shield/password: failed while comparing passwords: %w",
+			"shieldpassword: failed while comparing passwords: %w",
 			err,
 		)
 	}

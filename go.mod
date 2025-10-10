@@ -15,7 +15,7 @@ require (
 	go.inout.gg/conduit v0.1.3
 	go.inout.gg/foundations v0.0.0-20250808175114-bcc385b29ad2
 	go.jetify.com/typeid/v2 v2.0.0-alpha.3
-	go.uber.org/mock v0.5.0
+	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.42.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/text v0.29.0

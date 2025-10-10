@@ -1,4 +1,4 @@
-export PARALLEL_CNT := $(nproc --all)
+cpus := shell('nproc --all')
 
 setup:
     lefthook install -f
@@ -8,15 +8,14 @@ mod:
     go mod download
     gomod2nix
 
+format:
+    nix fmt
+
 lint-fix:
-  typos -w
   golangci-lint run --fix ./...
 
-format-sql:
-  npx prettier -w **/*.sql
-
-gen:
+gen: mod
   go generate ./...
 
 test-all:
-  go test -race -count=1 -parallel=4 ./...
+  go test -race -count=1 -parallel=$(cpus) ./...

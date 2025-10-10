@@ -17,24 +17,23 @@ import (
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/tid"
-	"go.inout.gg/shield/shieldpasswordverifier"
 	"go.inout.gg/shield/shieldsender"
 	"go.inout.gg/shield/shieldsession"
 )
 
 var (
 	ErrUserExists = errors.New(
-		"shield/password: user already exists",
+		"shieldpassword: user already exists",
 	)
-	ErrPasswordIncorrect = errors.New("shield/password: password incorrect")
+	ErrPasswordIncorrect = errors.New("shieldpassword: password incorrect")
 )
 
 // Config is the configuration for the password handler.
 type Config[U any] struct {
-	Logger           *slog.Logger
-	PasswordHasher   PasswordHasher
-	PasswordVerifier shieldpasswordverifier.PasswordVerifier
-	Hooker           Hooker[U]
+	Logger          *slog.Logger
+	PasswordHasher  PasswordHasher
+	PasswordChecker PasswordChecker
+	Hooker          Hooker[U]
 }
 
 func (c *Config[U]) defaults() {
@@ -134,7 +133,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	sess, err := shieldsession.FromContext[S](ctx)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/password: failed to retrieve session from the context: %w",
+			"shieldpassword: failed to retrieve session from the context: %w",
 			err,
 		)
 	}
@@ -144,7 +143,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	passwordHash, err := h.config.PasswordHasher.Hash(newPassword)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/password: failed to hash password: %w",
+			"shieldpassword: failed to hash password: %w",
 			err,
 		)
 	}
@@ -152,7 +151,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/password: failed to begin transaction: %w",
+			"shieldpassword: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -163,7 +162,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 		FindUserWithPasswordCredentialByUserID(ctx, tx, sess.UserID)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/password: failed to retrieve users credentials: %w",
+			"shieldpassword: failed to retrieve users credentials: %w",
 			err,
 		)
 	}
@@ -176,7 +175,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 			UserCredentialSecret: passwordHash,
 		}); err != nil {
 			return fmt.Errorf(
-				"shield/password: failed to create user credential: %w",
+				"shieldpassword: failed to create user credential: %w",
 				err,
 			)
 		}
@@ -188,7 +187,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	} else {
 		ok, err := h.config.PasswordHasher.Verify(pointer.ToValue(dbUser.PasswordHash, ""), oldPassword)
 		if err != nil {
-			return fmt.Errorf("shield/password: failed to verify password: %w", err)
+			return fmt.Errorf("shieldpassword: failed to verify password: %w", err)
 		}
 
 		if !ok {
@@ -201,7 +200,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	if err != nil {
 		if !errors.Is(err, errors.ErrUnsupported) {
 			return fmt.Errorf(
-				"shield/password: failed to expire sessions: %w",
+				"shieldpassword: failed to expire sessions: %w",
 				err,
 			)
 		}
@@ -213,7 +212,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf(
-			"shield/password: failed to register a user: %w",
+			"shieldpassword: failed to register a user: %w",
 			err,
 		)
 	}
@@ -237,7 +236,7 @@ func (h *Handler[U, _]) HandleUserRegistration(
 	passwordHash, err := h.config.PasswordHasher.Hash(password)
 	if err != nil {
 		return user, fmt.Errorf(
-			"shield/password: failed to hash password: %w",
+			"shieldpassword: failed to hash password: %w",
 			err,
 		)
 	}
@@ -245,7 +244,7 @@ func (h *Handler[U, _]) HandleUserRegistration(
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return user, fmt.Errorf(
-			"shield/password: failed to begin transaction: %w",
+			"shieldpassword: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -270,7 +269,7 @@ func (h *Handler[U, _]) HandleUserRegistration(
 		)
 		if err != nil {
 			return user, fmt.Errorf(
-				"shield/password: failed to hook user registration: %w",
+				"shieldpassword: failed to hook user registration: %w",
 				err,
 			)
 		}
@@ -278,7 +277,7 @@ func (h *Handler[U, _]) HandleUserRegistration(
 
 	if err := tx.Commit(ctx); err != nil {
 		return user, fmt.Errorf(
-			"shield/password: failed to register a user: %w",
+			"shieldpassword: failed to register a user: %w",
 			err,
 		)
 	}
@@ -306,7 +305,7 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 		}
 
 		return uid, fmt.Errorf(
-			"shield/password: failed to register a user: %w",
+			"shieldpassword: failed to register a user: %w",
 			err,
 		)
 	}
@@ -318,7 +317,7 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 		UserCredentialSecret: passwordHash,
 	}); err != nil {
 		return uid, fmt.Errorf(
-			"shield/password: failed to register a user: %w",
+			"shieldpassword: failed to register a user: %w",
 			err,
 		)
 	}
@@ -340,7 +339,7 @@ func (h *Handler[U, _]) HandleUserLogin(
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return user, fmt.Errorf(
-			"shield/password: failed to begin transaction: %w",
+			"shieldpassword: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -358,7 +357,7 @@ func (h *Handler[U, _]) HandleUserLogin(
 		}
 
 		return user, fmt.Errorf(
-			"shield/password: failed to find user: %w",
+			"shieldpassword: failed to find user: %w",
 			err,
 		)
 	}
@@ -378,7 +377,7 @@ func (h *Handler[U, _]) HandleUserLogin(
 		payload, err = h.config.Hooker.OnUserLogin(ctx, user.ID, tx)
 		if err != nil {
 			return user, fmt.Errorf(
-				"shield/password: failed to hook user login: %w",
+				"shieldpassword: failed to hook user login: %w",
 				err,
 			)
 		}
@@ -387,7 +386,7 @@ func (h *Handler[U, _]) HandleUserLogin(
 	// Make sure that the password hashing is performed outside of the transaction.
 	if err := tx.Commit(ctx); err != nil {
 		return user, fmt.Errorf(
-			"shield/password: failed to login a user: %w",
+			"shieldpassword: failed to login a user: %w",
 			err,
 		)
 	}
@@ -395,7 +394,7 @@ func (h *Handler[U, _]) HandleUserLogin(
 	ok, err := h.config.PasswordHasher.Verify(dbUser.PasswordHash, password)
 	if err != nil {
 		return user, fmt.Errorf(
-			"shield/password: failed to verify password: %w",
+			"shieldpassword: failed to verify password: %w",
 			err,
 		)
 	}

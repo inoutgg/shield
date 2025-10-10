@@ -23,7 +23,7 @@ import (
 
 // ErrUsedPasswordResetToken is returned when the password reset token has already been used.
 var ErrUsedPasswordResetToken = errors.New(
-	"shield/passwordreset: used password reset token",
+	"shieldpasswordreset: password reset token has been used",
 )
 
 const (
@@ -138,7 +138,7 @@ func (h *Handler) HandlePasswordReset(
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to begin transaction: %w",
+			"shieldpasswordreset: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -148,7 +148,7 @@ func (h *Handler) HandlePasswordReset(
 	user, err := dbsqlc.New().FindUserByEmail(ctx, tx, email)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to find user: %w",
+			"shieldpasswordreset: failed to find user: %w",
 			err,
 		)
 	}
@@ -164,14 +164,14 @@ func (h *Handler) HandlePasswordReset(
 		})
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to upsert password reset token: %w",
+			"shieldpasswordreset: failed to upsert password reset token: %w",
 			err,
 		)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to commit transaction: %w",
+			"shieldpasswordreset: failed to commit transaction: %w",
 			err,
 		)
 	}
@@ -184,7 +184,7 @@ func (h *Handler) HandlePasswordReset(
 		},
 	}); err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to send password reset token: %w",
+			"shieldpasswordreset: failed to send password reset token: %w",
 			err,
 		)
 	}
@@ -200,7 +200,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 	passwordHash, err := h.config.PasswordHasher.Hash(password)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to hash password: %w",
+			"shieldpasswordreset: failed to hash password: %w",
 			err,
 		)
 	}
@@ -208,7 +208,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to begin transaction: %w",
+			"shieldpasswordreset: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -218,7 +218,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 	tok, err := dbsqlc.New().FindPasswordResetToken(ctx, tx, tokStr)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to find password reset token: %w",
+			"shieldpasswordreset: failed to find password reset token: %w",
 			err,
 		)
 	}
@@ -230,14 +230,14 @@ func (h *Handler) HandlePasswordResetConfirm(
 	user, err := dbsqlc.New().FindUserByID(ctx, tx, tok.UserID)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to find user: %w",
+			"shieldpasswordreset: failed to find user: %w",
 			err,
 		)
 	}
 
 	if err := dbsqlc.New().MarkPasswordResetTokenAsUsed(ctx, tx, tok.Token); err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to mark password reset token as used: %w",
+			"shieldpasswordreset: failed to mark password reset token as used: %w",
 			err,
 		)
 	}
@@ -249,7 +249,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 		UserCredentialSecret: passwordHash,
 	}); err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to set user password: %w",
+			"shieldpasswordreset: failed to set user password: %w",
 			err,
 		)
 	}
@@ -260,14 +260,14 @@ func (h *Handler) HandlePasswordResetConfirm(
 		EvictedBy: &user.ID,
 	}); err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to expire sessions: %w",
+			"shieldpasswordreset: failed to expire sessions: %w",
 			err,
 		)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to commit transaction: %w",
+			"shieldpasswordreset: failed to commit transaction: %w",
 			err,
 		)
 	}
@@ -278,7 +278,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 		Payload: nil,
 	}); err != nil {
 		return fmt.Errorf(
-			"shield/passwordreset: failed to send success message: %w",
+			"shieldpasswordreset: failed to send success message: %w",
 			err,
 		)
 	}

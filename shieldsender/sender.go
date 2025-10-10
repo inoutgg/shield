@@ -29,6 +29,8 @@ type Message struct {
 }
 
 // Sender is an interface for sending email messages.
+//
+//go:generate mockgen -destination=../internal/mocks/sender_mock.go -package=mocks . Sender
 type Sender interface {
 	// Send sends the given message.
 	Send(context.Context, Message) error
