@@ -1,9 +1,11 @@
+//nolint:gci // import order
 package shieldpassword
 
 import (
 	"bytes"
 	"cmp"
 	"context"
+
 	//nolint:gosec // SHA1 is required by pwnedpasswords.com
 	"crypto/sha1"
 	"errors"
@@ -79,8 +81,8 @@ func (c *pwndPasswordChecker) Check(ctx context.Context, password string) error 
 		return fmt.Errorf("shieldpassword: failed to read response body: %w", err)
 	}
 
-	suffixes := strings.Split(buf.String(), "\n")
-	for _, s := range suffixes {
+	suffixes := strings.SplitSeq(buf.String(), "\n")
+	for s := range suffixes {
 		if strings.HasPrefix(s, suffix) {
 			split := strings.Split(s, ":")
 			if len(split) != 2 {

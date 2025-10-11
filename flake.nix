@@ -16,10 +16,8 @@
 
   outputs =
     {
-      self,
       flake-parts,
       gomod2nix,
-      devenv,
       ...
     }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
@@ -41,8 +39,6 @@
 
       perSystem =
         {
-          self',
-          inputs',
           pkgs,
           lib,
           config,
@@ -61,7 +57,8 @@
                 enable = true;
                 excludes = [
                   "*_mock.go"
-                  "*.sql.go"
+                  "internal/dbsqlc/**"
+                  "internal/dbsqlctest/**"
                 ];
               };
               typos.enable = true;
@@ -82,21 +79,12 @@
                   files = "\\.(go|mod)$";
                 };
 
-                format = {
-                  after = [ "gen" ];
-                  enable = true;
-                  name = "format";
-                  description = "Code formatting";
-                  entry = "${lib.getExe pkgs.just} format";
-                  pass_filenames = false;
-                };
-
                 lint = {
-                  after = [ "format" ];
+                  after = [ "gen" ];
                   enable = true;
                   name = "lint";
                   description = "Lint checks";
-                  entry = "${lib.getExe pkgs.just} lint-fix";
+                  entry = "${lib.getExe pkgs.just} lint";
                   pass_filenames = false;
                 };
               };
@@ -105,6 +93,8 @@
             packages = with pkgs; [
               gomod2nix.packages.${system}.default
               golangci-lint
+              govulncheck
+              gotools
               mockgen
 
               sqlc
