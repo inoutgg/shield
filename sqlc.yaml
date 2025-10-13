@@ -154,8 +154,32 @@ sql:
               package: "typeid"
               type: "TypeID"
 
+          ### shield_workspace_teams ###
+          - column: "shield_workspace_teams.workspace_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_workspace_teams.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
+          ### shield_workspace_membership_invitations ###
+          - column: "shield_workspace_membership_invitations.workspace_id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+
           ### shield_workspace_membership_invitations ###
           - column: "shield_workspace_membership_invitations.id"
+            go_type:
+              import: "go.jetify.com/typeid/v2"
+              package: "typeid"
+              type: "TypeID"
+          - column: "shield_workspace_membership_invitations.team_id"
             go_type:
               import: "go.jetify.com/typeid/v2"
               package: "typeid"

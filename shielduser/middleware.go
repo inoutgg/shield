@@ -1,4 +1,4 @@
-package shieldsession
+package shielduser
 
 import (
 	"cmp"
@@ -13,13 +13,11 @@ import (
 	"go.inout.gg/shield"
 )
 
-//nolint:gochecknoglobals
-var d = debug.Debuglog("shield/shielduser")
-
 type ctxKey struct{}
 
-//nolint:gochecknoglobals
-var kCtxKey = ctxKey{}
+var kCtxKey = ctxKey{} //nolint:gochecknoglobals
+
+var d = debug.Debuglog("shield/shielduser") //nolint:gochecknoglobals
 
 // Config is the configuration for the middleware.
 type Config struct {

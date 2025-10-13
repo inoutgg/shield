@@ -77,6 +77,7 @@ type WorkspaceInviteMessagePayload struct {
 func (h *Handler) InviteUserToWorkspace(
 	ctx context.Context,
 	workspaceID typeid.TypeID,
+	teamID typeid.TypeID,
 	memberEmail string,
 ) error {
 	tx, err := h.pool.Begin(ctx)
@@ -98,7 +99,7 @@ func (h *Handler) InviteUserToWorkspace(
 	}
 
 	var memberID *typeid.TypeID
-	if dbsql.IsNotFoundError(err) {
+	if !dbsql.IsNotFoundError(err) {
 		memberID = &invitedUser.ID
 	}
 
@@ -106,6 +107,7 @@ func (h *Handler) InviteUserToWorkspace(
 		InviteUserToWorkspaceByEmail(ctx, tx, dbsqlc.InviteUserToWorkspaceByEmailParams{
 			InvitationID: tid.MustWorkspaceMemberInvitationID(),
 			WorkspaceID:  workspaceID,
+			TeamID:       teamID,
 			MemberEmail:  memberEmail,
 			ExpiresAt:    time.Now().Add(h.config.InvitationExpiryIn),
 		})
@@ -150,12 +152,13 @@ func (h *Handler) CreateWorkspace(
 	ctx context.Context,
 	name string,
 	ownerID typeid.TypeID,
-) (typeid.TypeID, error) {
-	var workspaceID typeid.TypeID
+) (typeid.TypeID, typeid.TypeID, error) {
+	workspaceID := tid.MustWorkspaceID()
+	teamID := tid.MustWorkspaceTeamID()
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return workspaceID, fmt.Errorf(
+		return workspaceID, teamID, fmt.Errorf(
 			"shieldworkspace: failed to begin transaction: %w",
 			err,
 		)
@@ -163,31 +166,43 @@ func (h *Handler) CreateWorkspace(
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	w, err := dbsqlc.New().
+	if err := dbsqlc.New().
 		CreateWorkspace(ctx, tx, dbsqlc.CreateWorkspaceParams{
 			WorkspaceID: workspaceID,
 			Name:        name,
 			OwnedBy:     ownerID,
-		})
-	if err != nil {
-		return workspaceID, fmt.Errorf(
+		}); err != nil {
+		return workspaceID, teamID, fmt.Errorf(
 			"shieldworkspace: failed to create workspace: %w",
 			err,
 		)
 	}
 
-	workspaceID = w.ID
+	// Create a default team for the workspace
+	if err = dbsqlc.New().CreateTeam(ctx, tx, dbsqlc.CreateTeamParams{
+		TeamID:      teamID,
+		Name:        "Default",
+		Handle:      "default",
+		WorkspaceID: workspaceID,
+		IsSystem:    true,
+		Metadata:    nil,
+	}); err != nil {
+		return workspaceID, teamID, fmt.Errorf(
+			"shieldworkspace: failed to create default team: %w",
+			err,
+		)
+	}
 
-	return workspaceID, nil
+	return workspaceID, teamID, nil
 }
 
 // FindWorkspace retrieves a workspace by its ID.
 func FindWorkspace(
 	ctx context.Context,
+	dbtx dbsqlc.DBTX,
 	workspaceID typeid.TypeID,
-	db dbsqlc.DBTX,
 ) (*Workspace, error) {
-	w, err := dbsqlc.New().FindWorkspaceByID(ctx, db, workspaceID)
+	w, err := dbsqlc.New().FindWorkspaceByID(ctx, dbtx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"shieldworkspace: failed to find workspace by ID: %w",

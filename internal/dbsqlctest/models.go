@@ -83,19 +83,13 @@ type ShieldWorkspace struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
-}
-
-type ShieldWorkspaceMember struct {
-	WorkspaceID typeid.TypeID
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	MemberID    typeid.TypeID
-	Metadata    []byte
+	Slug      string
 }
 
 type ShieldWorkspaceMembershipInvitation struct {
 	ID          typeid.TypeID
 	WorkspaceID typeid.TypeID
+	TeamID      typeid.TypeID
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	MemberEmail string
@@ -103,4 +97,24 @@ type ShieldWorkspaceMembershipInvitation struct {
 	ExpiresAt   time.Time
 	AcceptedAt  time.Time
 	RejectedAt  time.Time
+}
+
+type ShieldWorkspaceTeam struct {
+	ID          typeid.TypeID
+	WorkspaceID typeid.TypeID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	IsSystem    bool
+	Name        string
+	Handle      string
+	Metadata    []byte
+}
+
+type ShieldWorkspaceTeamMember struct {
+	ID          string
+	WorkspaceID string
+	TeamID      string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	MemberID    string
 }

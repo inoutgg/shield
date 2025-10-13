@@ -16,10 +16,11 @@ type Querier interface {
 	ChangePasswordCredentialEmailByUserID(ctx context.Context, db DBTX, arg ChangePasswordCredentialEmailByUserIDParams) error
 	ChangeUserEmailByID(ctx context.Context, db DBTX, arg ChangeUserEmailByIDParams) error
 	CreateRecoveryCodeBatch(ctx context.Context, db DBTX, arg []CreateRecoveryCodeBatchParams) (int64, error)
+	CreateTeam(ctx context.Context, db DBTX, arg CreateTeamParams) error
 	CreateUser(ctx context.Context, db DBTX, arg CreateUserParams) error
 	CreateUserPasskeyCredential(ctx context.Context, db DBTX, arg CreateUserPasskeyCredentialParams) error
 	CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (typeid.TypeID, error)
-	CreateWorkspace(ctx context.Context, db DBTX, arg CreateWorkspaceParams) (ShieldWorkspace, error)
+	CreateWorkspace(ctx context.Context, db DBTX, arg CreateWorkspaceParams) error
 	DeleteExpiredPasswordResetTokens(ctx context.Context, db DBTX) error
 	EvictUnconsumedRecoveryCodeBatch(ctx context.Context, db DBTX, arg EvictUnconsumedRecoveryCodeBatchParams) error
 	ExpireAllSessionsByUserID(ctx context.Context, db DBTX, arg ExpireAllSessionsByUserIDParams) ([]typeid.TypeID, error)

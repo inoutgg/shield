@@ -7,6 +7,7 @@ package serversession
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -22,10 +23,11 @@ import (
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/tid"
-	"go.inout.gg/shield/shieldsession"
+	"go.inout.gg/shield/shieldmfa"
+	"go.inout.gg/shield/shielduser"
 )
 
-var _ shieldsession.Authenticator[any, any] = (*sessionStrategy[any, any])(nil)
+var _ shielduser.Authenticator[any, any] = (*sessionStrategy[any, any])(nil)
 
 //nolint:gochecknoglobals
 var d = debug.Debuglog("shield/session")
@@ -44,17 +46,17 @@ type sessionStrategy[U, S any] struct {
 type Hooker[U, S any] interface {
 	OnSessionIssue(
 		context.Context,
-		shield.User[U],
-		shieldsession.Session[S],
+		shielduser.User[U],
+		shielduser.Session[S],
 		pgx.Tx,
-	) (shieldsession.Session[S], error)
+	) (shielduser.Session[S], error)
 
 	// OnSessionAuthenticate allows to hook into the session authentication process.
 	OnSessionAuthenticate(
 		context.Context,
-		shieldsession.Session[S],
+		shielduser.Session[S],
 		pgx.Tx,
-	) (shieldsession.Session[S], error)
+	) (shielduser.Session[S], error)
 
 	// OnLogout allows to hook into the session logout process.
 	OnLogout(
@@ -112,7 +114,7 @@ func NewConfig[U, S any](opts ...func(*Config[U, S])) *Config[U, S] {
 func New[U, S any](
 	pool *pgxpool.Pool,
 	config *Config[U, S],
-) shieldsession.Authenticator[U, S] {
+) shielduser.Authenticator[U, S] {
 	if config == nil {
 		config = NewConfig[U, S]()
 	}
@@ -128,8 +130,8 @@ func New[U, S any](
 func (s *sessionStrategy[U, S]) Issue(
 	w http.ResponseWriter,
 	r *http.Request,
-	user shield.User[U],
-) (shieldsession.Session[S], error) {
+	user shielduser.User[U],
+) (shielduser.Session[S], error) {
 	ctx := r.Context()
 	sessionID := tid.MustSessionID()
 	expiresAt := time.Now().Add(s.config.ExpiresIn)
@@ -141,7 +143,7 @@ func (s *sessionStrategy[U, S]) Issue(
 		expiresAt,
 	)
 
-	var sess shieldsession.Session[S]
+	var sess shielduser.Session[S]
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -153,15 +155,19 @@ func (s *sessionStrategy[U, S]) Issue(
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	mfas, err := user.MFA(ctx, tx)
-	if err != nil {
-		return sess, fmt.Errorf(
-			"shield/session: failed to get MFA: %w",
-			err,
-		)
-	}
+	isMFARequired := true
 
-	isMFARequired := len(mfas) > 0
+	mfas, err := shieldmfa.UserMFA(ctx, tx, user.ID)
+	if err != nil {
+		if errors.Is(err, shieldmfa.ErrNoMFAMethods) {
+			isMFARequired = false
+		} else {
+			return sess, fmt.Errorf(
+				"shield/session: failed to get MFA: %w",
+				err,
+			)
+		}
+	}
 
 	_, err = dbsqlc.New().
 		CreateUserSession(ctx, tx, dbsqlc.CreateUserSessionParams{
@@ -207,7 +213,7 @@ func (s *sessionStrategy[U, S]) Issue(
 	)
 
 	if isMFARequired {
-		return sess, shield.ErrMFARequired
+		return sess, shieldmfa.NewUserMFARequiredError(user.ID, mfas)
 	}
 
 	return sess, nil
@@ -216,10 +222,10 @@ func (s *sessionStrategy[U, S]) Issue(
 func (s *sessionStrategy[U, S]) Authenticate(
 	w http.ResponseWriter,
 	r *http.Request,
-) (shieldsession.Session[S], error) {
+) (shielduser.Session[S], error) {
 	ctx := r.Context()
 
-	var sess shieldsession.Session[S]
+	var sess shielduser.Session[S]
 
 	sessionIDStr := httpcookie.Get(r, s.config.CookieName)
 	if sessionIDStr == "" {
@@ -295,7 +301,7 @@ func (s *sessionStrategy[U, S]) ExpireSessions(
 	ctx context.Context,
 	tx pgx.Tx,
 ) error {
-	sess, err := shieldsession.FromContext[S](ctx)
+	sess, err := shielduser.FromContext[S](ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shield/session: failed to retrieve session from a given context: %w",

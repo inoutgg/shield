@@ -8,7 +8,6 @@ import (
 
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/shieldsender"
-	"go.inout.gg/shield/shieldsession"
 )
 
 // Handler handles user management operations, such as changing email addresses,
@@ -31,8 +30,8 @@ func NewHandler[S any](
 // HandleChangeEmail updates the email address associated with a user's account.
 //
 // It requires a session to be present in the context, otherwise it fails.
-func (h Handler[S]) HandleChangeEmail(ctx context.Context, email string) error {
-	sess, err := shieldsession.FromContext[S](ctx)
+func (h *Handler[S]) HandleChangeEmail(ctx context.Context, email string) error {
+	sess, err := FromContext[S](ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shielduser: failed to retrieve session: %w",

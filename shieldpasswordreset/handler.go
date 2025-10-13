@@ -18,7 +18,7 @@ import (
 	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldpassword"
 	"go.inout.gg/shield/shieldsender"
-	"go.inout.gg/shield/shieldsession"
+	"go.inout.gg/shield/shielduser"
 )
 
 // ErrUsedPasswordResetToken is returned when the password reset token has already been used.
@@ -131,7 +131,7 @@ func (h *Handler) HandlePasswordReset(
 	email string,
 ) error {
 	// Forbid authorized user access.
-	if shieldsession.IsAuthenticated(ctx) {
+	if shielduser.IsAuthenticated(ctx) {
 		return shield.ErrAuthenticatedUser
 	}
 

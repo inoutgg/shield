@@ -18,7 +18,7 @@ import (
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldsender"
-	"go.inout.gg/shield/shieldsession"
+	"go.inout.gg/shield/shielduser"
 )
 
 var (
@@ -91,14 +91,14 @@ func WithHooker[U any](hooker Hooker[U]) func(*Config[U]) {
 type Handler[U, S any] struct {
 	pool          *pgxpool.Pool
 	config        *Config[U]
-	authenticator shieldsession.Authenticator[U, S]
+	authenticator shielduser.Authenticator[U, S]
 	sender        shieldsender.Sender
 }
 
 // It provides functionality to.
 func NewHandler[U, S any](
 	pool *pgxpool.Pool,
-	authenticator shieldsession.Authenticator[U, S],
+	authenticator shielduser.Authenticator[U, S],
 	sender shieldsender.Sender,
 	config *Config[U],
 ) *Handler[U, S] {
@@ -130,7 +130,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	ctx context.Context,
 	oldPassword, newPassword string,
 ) error {
-	sess, err := shieldsession.FromContext[S](ctx)
+	sess, err := shielduser.FromContext[S](ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldpassword: failed to retrieve session from the context: %w",
@@ -223,11 +223,11 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 func (h *Handler[U, _]) HandleUserRegistration(
 	ctx context.Context,
 	email, password string,
-) (shield.User[U], error) {
-	var user shield.User[U]
+) (shielduser.User[U], error) {
+	var user shielduser.User[U]
 
 	// Forbid authorized user access.
-	if shieldsession.IsAuthenticated(ctx) {
+	if shielduser.IsAuthenticated(ctx) {
 		return user, shield.ErrAuthenticatedUser
 	}
 
@@ -328,11 +328,11 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 func (h *Handler[U, _]) HandleUserLogin(
 	ctx context.Context,
 	email, password string,
-) (shield.User[U], error) {
-	var user shield.User[U]
+) (shielduser.User[U], error) {
+	var user shielduser.User[U]
 
 	// Forbid authorized user access.
-	if shieldsession.IsAuthenticated(ctx) {
+	if shielduser.IsAuthenticated(ctx) {
 		return user, shield.ErrAuthenticatedUser
 	}
 

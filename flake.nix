@@ -118,12 +118,10 @@
               package = pkgs.postgresql_17;
               initialScript = ''
                 CREATE USER test SUPERUSER PASSWORD 'test';
+                CREATE DATABASE test OWNER test;
               '';
-              listen_addresses = "127.0.0.1";
-              port = 6432;
-              settings = {
-                max_prepared_transactions = 262143;
-              };
+              listen_addresses = "localhost";
+              port = 5432;
             };
           };
         };

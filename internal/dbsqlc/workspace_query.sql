@@ -1,7 +1,6 @@
--- name: CreateWorkspace :one
+-- name: CreateWorkspace :exec
 INSERT INTO shield_workspaces (id, owned_by, name)
-VALUES (@workspace_id, @owned_by, @name)
-RETURNING *;
+VALUES (@workspace_id, @owned_by, @name);
 
 -- name: FindWorkspaceByID :one
 SELECT *
@@ -9,8 +8,8 @@ FROM shield_workspaces
 WHERE id = @id;
 
 -- name: InviteUserToWorkspaceByEmail :exec
-INSERT INTO shield_workspace_membership_invitations (id, workspace_id, member_email, expires_at)
-VALUES (@invitation_id, @workspace_id, @member_email, @expires_at);
+INSERT INTO shield_workspace_membership_invitations (id, workspace_id, team_id, member_email, expires_at)
+VALUES (@invitation_id, @workspace_id, @team_id, @member_email, @expires_at);
 
 -- name: AcceptWorkspaceInvitation :exec
 UPDATE shield_workspace_membership_invitations
@@ -26,3 +25,7 @@ WHERE id = @invitation_id;
 UPDATE shield_workspaces
 SET owned_by = @new_owner_id
 WHERE id = @workspace_id;
+
+-- name: CreateTeam :exec
+INSERT INTO shield_workspace_teams (id, workspace_id, name, handle, metadata, is_system)
+VALUES (@team_id, @workspace_id, @name, @handle, @metadata, @is_system);

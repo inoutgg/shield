@@ -79,6 +79,12 @@ BEFORE UPDATE ON shield_workspace_membership_invitations
 FOR EACH ROW
 EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 
+DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_workspace_teams ON shield_workspace_teams;
+CREATE TRIGGER shield_trigger_autoupdate_updated_at_shield_workspace_teams
+BEFORE UPDATE ON shield_workspace_teams
+FOR EACH ROW
+EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
+
 DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_workspaces ON shield_workspaces;
 CREATE TRIGGER shield_trigger_autoupdate_updated_at_shield_workspaces
 BEFORE UPDATE ON shield_workspaces

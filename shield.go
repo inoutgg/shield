@@ -1,7 +1,6 @@
 package shield
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"os"
@@ -9,11 +8,6 @@ import (
 	"github.com/go-playground/mold/v4/modifiers"
 	"github.com/go-playground/mold/v4/scrubbers"
 	"github.com/go-playground/validator/v10"
-	"github.com/jackc/pgx/v5"
-	"go.jetify.com/typeid/v2"
-
-	"go.inout.gg/shield/internal/dbsqlc"
-	"go.inout.gg/shield/internal/sliceutil"
 )
 
 const (
@@ -49,34 +43,3 @@ var (
 
 //nolint:gochecknoglobals
 var DefaultLogger = slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-type User[T any] struct {
-	T          *T
-	cachedMfas []string
-	ID         typeid.TypeID
-}
-
-// MFA returns a list of enabled MFAs for the user.
-//
-// If no MFAs are enabled, an empty slice is returned.
-func (u *User[_]) MFA(ctx context.Context, conn dbsqlc.DBTX) ([]string, error) {
-	if len(u.cachedMfas) > 0 {
-		return u.cachedMfas, nil
-	}
-
-	mfas, err := dbsqlc.New().GetUserMFAs(ctx, conn, u.ID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-	}
-
-	u.cachedMfas = sliceutil.Map(
-		mfas,
-		func(mfa dbsqlc.ShieldUserMfa) string {
-			return mfa.Name
-		},
-	)
-
-	return u.cachedMfas, nil
-}

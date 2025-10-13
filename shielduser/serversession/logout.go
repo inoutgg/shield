@@ -9,7 +9,7 @@ import (
 	"go.inout.gg/foundations/http/httperror"
 
 	"go.inout.gg/shield/internal/dbsqlc"
-	"go.inout.gg/shield/shieldsession"
+	"go.inout.gg/shield/shielduser"
 )
 
 // LogoutHandler is a handler that logs out the user and deletes the session.
@@ -36,7 +36,7 @@ func (h *LogoutHandler[U, S]) Logout(
 ) error {
 	ctx := r.Context()
 
-	sess, err := shieldsession.FromRequest[S](r)
+	sess, err := shielduser.FromRequest[S](r)
 	if err != nil {
 		return httperror.FromError(err, http.StatusUnauthorized)
 	}

@@ -1,4 +1,4 @@
-package shieldsession
+package shielduser
 
 import (
 	"context"
@@ -7,14 +7,16 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"go.jetify.com/typeid/v2"
-
-	"go.inout.gg/shield"
 )
 
 // Session is a session that is issued when a user is authenticated.
 type Session[T any] struct {
+	// T is used to carry additional data about the user session.
+	//
+	// It is expected to be defined by the application.
+	T *T
+
 	ExpiresAt time.Time
-	T         *T
 	UserID    typeid.TypeID
 	ID        typeid.TypeID
 }
@@ -28,7 +30,7 @@ type Authenticator[U, S any] interface {
 	Issue(
 		http.ResponseWriter,
 		*http.Request,
-		shield.User[U],
+		User[U],
 	) (Session[S], error)
 
 	// Authenticate authenticates the user.

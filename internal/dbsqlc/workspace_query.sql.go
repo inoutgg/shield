@@ -23,10 +23,35 @@ func (q *Queries) AcceptWorkspaceInvitation(ctx context.Context, db DBTX, invita
 	return err
 }
 
-const createWorkspace = `-- name: CreateWorkspace :one
+const createTeam = `-- name: CreateTeam :exec
+INSERT INTO shield_workspace_teams (id, workspace_id, name, handle, metadata, is_system)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type CreateTeamParams struct {
+	TeamID      typeid.TypeID
+	WorkspaceID typeid.TypeID
+	Name        string
+	Handle      string
+	Metadata    []byte
+	IsSystem    bool
+}
+
+func (q *Queries) CreateTeam(ctx context.Context, db DBTX, arg CreateTeamParams) error {
+	_, err := db.Exec(ctx, createTeam,
+		arg.TeamID,
+		arg.WorkspaceID,
+		arg.Name,
+		arg.Handle,
+		arg.Metadata,
+		arg.IsSystem,
+	)
+	return err
+}
+
+const createWorkspace = `-- name: CreateWorkspace :exec
 INSERT INTO shield_workspaces (id, owned_by, name)
 VALUES ($1, $2, $3)
-RETURNING id, owned_by, created_at, updated_at, name
 `
 
 type CreateWorkspaceParams struct {
@@ -35,21 +60,13 @@ type CreateWorkspaceParams struct {
 	Name        string
 }
 
-func (q *Queries) CreateWorkspace(ctx context.Context, db DBTX, arg CreateWorkspaceParams) (ShieldWorkspace, error) {
-	row := db.QueryRow(ctx, createWorkspace, arg.WorkspaceID, arg.OwnedBy, arg.Name)
-	var i ShieldWorkspace
-	err := row.Scan(
-		&i.ID,
-		&i.OwnedBy,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Name,
-	)
-	return i, err
+func (q *Queries) CreateWorkspace(ctx context.Context, db DBTX, arg CreateWorkspaceParams) error {
+	_, err := db.Exec(ctx, createWorkspace, arg.WorkspaceID, arg.OwnedBy, arg.Name)
+	return err
 }
 
 const findWorkspaceByID = `-- name: FindWorkspaceByID :one
-SELECT id, owned_by, created_at, updated_at, name
+SELECT id, owned_by, created_at, updated_at, name, slug
 FROM shield_workspaces
 WHERE id = $1
 `
@@ -63,18 +80,20 @@ func (q *Queries) FindWorkspaceByID(ctx context.Context, db DBTX, id typeid.Type
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Name,
+		&i.Slug,
 	)
 	return i, err
 }
 
 const inviteUserToWorkspaceByEmail = `-- name: InviteUserToWorkspaceByEmail :exec
-INSERT INTO shield_workspace_membership_invitations (id, workspace_id, member_email, expires_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO shield_workspace_membership_invitations (id, workspace_id, team_id, member_email, expires_at)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type InviteUserToWorkspaceByEmailParams struct {
 	InvitationID typeid.TypeID
 	WorkspaceID  typeid.TypeID
+	TeamID       typeid.TypeID
 	MemberEmail  string
 	ExpiresAt    time.Time
 }
@@ -83,6 +102,7 @@ func (q *Queries) InviteUserToWorkspaceByEmail(ctx context.Context, db DBTX, arg
 	_, err := db.Exec(ctx, inviteUserToWorkspaceByEmail,
 		arg.InvitationID,
 		arg.WorkspaceID,
+		arg.TeamID,
 		arg.MemberEmail,
 		arg.ExpiresAt,
 	)

@@ -11,15 +11,16 @@ import (
 type prefix string
 
 var (
-	PrefixUser                      = prefix("user") //nolint:gochecknoglobals
-	PrefixCredential                = prefix("cred") //nolint:gochecknoglobals
-	PrefixSession                   = prefix("sess") //nolint:gochecknoglobals
-	PrefixRecoveryKey               = prefix("rk")   //nolint:gochecknoglobals
-	PrefixPasswordReset             = prefix("prk")  //nolint:gochecknoglobals
-	PrefixWorkspace                 = prefix("ws")   //nolint:gochecknoglobals
-	PrefixWorkspaceInvitation       = prefix("wsi")  //nolint:gochecknoglobals
-	PrefixWorkspaceMember           = prefix("wsm")  //nolint:gochecknoglobals
-	PrefixWorkspaceMemberInvitation = prefix("wsim") //nolint:gochecknoglobals
+	PrefixUser                      = prefix("user")     //nolint:gochecknoglobals
+	PrefixCredential                = prefix("cred")     //nolint:gochecknoglobals
+	PrefixSession                   = prefix("sess")     //nolint:gochecknoglobals
+	PrefixRecoveryKey               = prefix("rkey")     //nolint:gochecknoglobals
+	PrefixPasswordReset             = prefix("pswdr")    //nolint:gochecknoglobals
+	PrefixWorkspace                 = prefix("ws")       //nolint:gochecknoglobals
+	PrefixWorkspaceTeam             = prefix("tm")       //nolint:gochecknoglobals
+	PrefixWorkspaceInvitation       = prefix("wsinvite") //nolint:gochecknoglobals
+	PrefixWorkspaceMember           = prefix("tmmember") //nolint:gochecknoglobals
+	PrefixWorkspaceMemberInvitation = prefix("wsinvite") //nolint:gochecknoglobals
 )
 
 func MustUserID() typeid.TypeID                { return Must(PrefixUser) }
@@ -28,6 +29,7 @@ func MustSessionID() typeid.TypeID             { return Must(PrefixSession) }
 func MustRecoveryKeyID() typeid.TypeID         { return Must(PrefixRecoveryKey) }
 func MustPasswordResetID() typeid.TypeID       { return Must(PrefixPasswordReset) }
 func MustWorkspaceID() typeid.TypeID           { return Must(PrefixWorkspace) }
+func MustWorkspaceTeamID() typeid.TypeID       { return Must(PrefixWorkspaceTeam) }
 func MustWorkspaceInvitationID() typeid.TypeID { return Must(PrefixWorkspaceInvitation) }
 func MustWorkspaceMemberID() typeid.TypeID     { return Must(PrefixWorkspaceMember) }
 

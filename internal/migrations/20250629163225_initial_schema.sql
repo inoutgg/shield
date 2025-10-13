@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS shield_users (
   id VARCHAR(64) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  email VARCHAR(255) NOT NULL,
+  email VARCHAR(256) NOT NULL,
   is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (id),
   UNIQUE (email)
@@ -16,7 +16,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS shield_user_email_verification_tokens (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_used BOOLEAN NOT NULL DEFAULT FALSE,
   token VARCHAR(16) NOT NULL,
-  email VARCHAR(255) NOT NULL,
+  email VARCHAR(256) NOT NULL,
   user_id VARCHAR(64) NOT NULL,
   PRIMARY KEY (user_id, id),
   UNIQUE (email, is_used),
@@ -30,9 +30,9 @@ CREATE TABLE IF NOT EXISTS shield_user_credentials (
   id VARCHAR(64) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  name VARCHAR(255) NOT NULL,
+  name VARCHAR(256) NOT NULL,
   user_id VARCHAR(64) NOT NULL,
-  user_credential_key VARCHAR(255) NOT NULL, -- can be SSO user ID, email, etc.
+  user_credential_key VARCHAR(256) NOT NULL, -- can be SSO user ID, email, etc.
   user_credential_secret VARCHAR(4095) NOT NULL, -- can SSO token, password hash, etc.
   PRIMARY KEY (user_id, id),
   UNIQUE (name, user_credential_key),

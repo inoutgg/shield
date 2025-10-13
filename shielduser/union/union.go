@@ -9,21 +9,20 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"go.inout.gg/shield"
-	"go.inout.gg/shield/shieldsession"
+	"go.inout.gg/shield/shielduser"
 )
 
-var _ shieldsession.Authenticator[any, any] = (unionStrategy[any, any])(nil)
+var _ shielduser.Authenticator[any, any] = (unionStrategy[any, any])(nil)
 
-type unionStrategy[U any, S any] []shieldsession.Authenticator[U, S]
+type unionStrategy[U any, S any] []shielduser.Authenticator[U, S]
 
 // New creates a new Authenticator that tries to authenticate session
 // with provided authenticators.
 //
 // NOTE: the returned authneticator is not capable of issuing a new session.
 func New[U any, S any](
-	authenticators ...shieldsession.Authenticator[U, S],
-) shieldsession.Authenticator[U, S] {
+	authenticators ...shielduser.Authenticator[U, S],
+) shielduser.Authenticator[U, S] {
 	return unionStrategy[U, S](authenticators)
 }
 
@@ -33,8 +32,8 @@ func New[U any, S any](
 func (u unionStrategy[U, S]) Authenticate(
 	w http.ResponseWriter,
 	r *http.Request,
-) (shieldsession.Session[S], error) {
-	var sess shieldsession.Session[S]
+) (shielduser.Session[S], error) {
+	var sess shielduser.Session[S]
 
 	errs := make([]error, 0)
 
@@ -54,9 +53,9 @@ func (u unionStrategy[U, S]) Authenticate(
 func (unionStrategy[U, S]) Issue(
 	http.ResponseWriter,
 	*http.Request,
-	shield.User[U],
-) (shieldsession.Session[S], error) {
-	var sess shieldsession.Session[S]
+	shielduser.User[U],
+) (shielduser.Session[S], error) {
+	var sess shielduser.Session[S]
 
 	return sess, errors.ErrUnsupported
 }
