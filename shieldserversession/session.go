@@ -1,8 +1,8 @@
-// Package session implements a server-side session management strategy for
+// Package shieldserversession implements a server-side session management strategy for
 // managing user sessions.
 //
 // The implementation uses a PostgreSQL database to store session data.
-package serversession
+package shieldserversession
 
 import (
 	"cmp"
@@ -40,7 +40,7 @@ const (
 // TODO: implement session caching.
 type sessionStrategy[U, S any] struct {
 	pool   *pgxpool.Pool
-	config *Config[U, S]
+	config Config[U, S]
 }
 
 type Hooker[U, S any] interface {
@@ -81,30 +81,22 @@ type Config[U, S any] struct {
 	ExpiresIn  time.Duration // optional (default: 12h)
 }
 
+func (c *Config[_, _]) defaults() {
+	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
+	c.CookieName = cmp.Or(c.CookieName, DefaultCookieName)
+	c.ExpiresIn = cmp.Or(c.ExpiresIn, DefaultExpiresIn)
+
+	debug.Assert(c.Logger != nil, "c.Logger is required")
+	debug.Assert(c.CookieName != "", "c.CookieName is required")
+	debug.Assert(
+		c.ExpiresIn > 0,
+		"config.ExpiresIn must be positive time.Duration",
+	)
+}
+
 // WithHooker sets a session hooker for a given config.
 func WithHooker[U, S any](h Hooker[U, S]) func(*Config[U, S]) {
 	return func(c *Config[U, S]) { c.Hooker = h }
-}
-
-// NewConfig creates a new session configuration.
-func NewConfig[U, S any](opts ...func(*Config[U, S])) *Config[U, S] {
-	var config Config[U, S]
-	for _, opt := range opts {
-		opt(&config)
-	}
-
-	config.Logger = cmp.Or(config.Logger, shield.DefaultLogger)
-	config.CookieName = cmp.Or(config.CookieName, DefaultCookieName)
-	config.ExpiresIn = cmp.Or(config.ExpiresIn, DefaultExpiresIn)
-
-	debug.Assert(config.Logger != nil, "config.Logger is required")
-	debug.Assert(config.CookieName != "", "config.CookieName is required")
-	debug.Assert(
-		config.ExpiresIn > 0,
-		"config.ExpiresIn must be positive time.Duration",
-	)
-
-	return &config
 }
 
 // New creates a new session authenticator.
@@ -113,11 +105,14 @@ func NewConfig[U, S any](opts ...func(*Config[U, S])) *Config[U, S] {
 // store the session ID.
 func New[U, S any](
 	pool *pgxpool.Pool,
-	config *Config[U, S],
+	opts ...func(*Config[U, S]),
 ) shielduser.Authenticator[U, S] {
-	if config == nil {
-		config = NewConfig[U, S]()
+	var config Config[U, S]
+	for _, opt := range opts {
+		opt(&config)
 	}
+
+	config.defaults()
 
 	debug.Assert(pool != nil, "pool is required")
 
@@ -186,6 +181,7 @@ func (s *sessionStrategy[U, S]) Issue(
 	sess.ID = sessionID
 	sess.ExpiresAt = expiresAt
 	sess.UserID = user.ID
+	sess.IsMFARequired = isMFARequired
 
 	if s.config.Hooker != nil {
 		sess, err = s.config.Hooker.OnSessionIssue(ctx, user, sess, tx)
@@ -208,7 +204,7 @@ func (s *sessionStrategy[U, S]) Issue(
 		w,
 		s.config.CookieName,
 		sessionID.String(),
-		httpcookie.WithHttpOnly,
+		httpcookie.WithHTTPOnly,
 		httpcookie.WithExpiresIn(s.config.ExpiresIn),
 	)
 

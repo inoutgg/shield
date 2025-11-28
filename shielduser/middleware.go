@@ -3,11 +3,13 @@ package shielduser
 import (
 	"cmp"
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httperror"
+	"go.inout.gg/foundations/http/httphandler"
 	"go.inout.gg/foundations/http/httpmiddleware"
 
 	"go.inout.gg/shield"
@@ -22,98 +24,102 @@ var d = debug.Debuglog("shield/shielduser") //nolint:gochecknoglobals
 // Config is the configuration for the middleware.
 type Config struct {
 	Logger *slog.Logger
-
-	// Passthrough controls whether the request should be failed
-	// on unauthorized access.
-	Passthrough bool
 }
 
-// WithPassthrough returns a function that sets the Passthrough field of the Config.
-func WithPassthrough() func(*Config) {
-	return func(c *Config) { c.Passthrough = true }
+func (c *Config) defaults() {
+	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
+
+	debug.Assert(c.Logger != nil, "logger must be set")
 }
 
-// NewConfig returns a new configuration for Middleware.
-func NewConfig(opts ...func(*Config)) *Config {
+// Middleware returns a middleware that authenticates a user and adds
+// the session to the context on successful authentication.
+//
+// If user is not authenticated, the middleware passes the request without
+// session context. To prevent unauthorized access, use RequireAuthMiddleware
+//
+// If the authentication fails due to authenticator failure errorHandler is called
+// with the error.
+func Middleware[U, S any](
+	authenticator Authenticator[U, S],
+	errorHandler httphandler.ErrorHandler,
+	opts ...func(*Config),
+) httpmiddleware.MiddlewareFunc {
+	debug.Assert(authenticator != nil, "authenticator must be set")
+	debug.Assert(errorHandler != nil, "errorHandler must be set")
+
 	var config Config
 	for _, opt := range opts {
 		opt(&config)
 	}
 
-	config.Logger = cmp.Or(config.Logger, shield.DefaultLogger)
-
-	debug.Assert(config.Logger != nil, "logger must be set")
-
-	return &config
-}
-
-// Middleware returns a middleware that authenticates the user and
-// adds it to the request context.
-//
-// If the user is not authenticated, the error handler is called.
-//
-// If config is nil, the default config is used.
-//
-// If config.PassThrough is set, the middleware will not fail the request
-// on unauthorized access and instead will continue processing the request.
-func Middleware[U, S any](
-	authenticator Authenticator[U, S],
-	errorHandler httperror.ErrorHandler,
-	config *Config,
-) httpmiddleware.MiddlewareFunc {
-	debug.Assert(authenticator != nil, "authenticator must be set")
-	debug.Assert(errorHandler != nil, "errorHandler must be set")
-
-	if config == nil {
-		config = NewConfig()
-	}
+	config.defaults()
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				nextReq := r
-
 				sess, err := authenticator.Authenticate(w, r)
-				if err != nil {
-					// If Passthrough is set ignore the error and continue.
-					if !config.Passthrough {
-						errorHandler.ServeHTTP(
-							w,
-							r,
-							httperror.FromError(
-								err,
-								http.StatusUnauthorized,
-								"unauthorized access",
-							),
-						)
+				if err != nil &&
+					!errors.Is(err, shield.ErrUnauthenticatedUser) &&
+					!errors.Is(err, shield.ErrMFARequired) {
+					errorHandler.ServeHTTP(
+						w,
+						r,
+						httperror.FromError(
+							err,
+							http.StatusInternalServerError,
+							"unknown error",
+						),
+					)
 
-						return
-					}
-				} else {
-					ctx := context.WithValue(r.Context(), kCtxKey, &sess)
-					nextReq = r.WithContext(ctx)
+					return
 				}
 
 				next.ServeHTTP(
 					w,
-					nextReq,
+					r.WithContext(
+						context.WithValue(r.Context(), kCtxKey, &sess),
+					),
 				)
 			},
 		)
 	}
 }
 
-// RedirectAuthenticatedUserMiddleware redirects the user to the
-// provided URL if the user is authenticated.
+// RequireAuthenticatedUserMiddleware redirects a user to the
+// provided URL if the user is not authenticated.
 //
 // Make sure to use the Middleware before adding this one.
-func RedirectAuthenticatedUserMiddleware(
-	redirectURL string,
-) httpmiddleware.MiddlewareFunc {
+func RequireAuthenticatedUserMiddleware[S any](redirectURL string) httpmiddleware.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !IsAuthenticated[S](r.Context()) {
+				d("user is not authenticated")
+
+				http.Redirect(
+					w,
+					r,
+					redirectURL,
+					http.StatusTemporaryRedirect,
+				)
+
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// PreventAuthenticatedUserMiddleware redirects a user to the
+// provided URL if the user is authenticated.
+//
+// Make sure to use the Middleware before adding this middleware.
+func PreventAuthenticatedUserMiddleware[S any](redirectURL string) httpmiddleware.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				if IsAuthenticated(r.Context()) {
+				if IsAuthenticated[S](r.Context()) {
 					d("redirecting authenticated user")
 
 					http.Redirect(
@@ -141,9 +147,17 @@ func FromRequest[S any](r *http.Request) (*Session[S], error) {
 
 // FromContext returns the user from the context if it exists.
 //
+// If MFA is required for the session, both session and
+// shield.ErrMFARequired are returned.
+//
 // Make sure to use the Middleware before calling this function.
 func FromContext[S any](ctx context.Context) (*Session[S], error) {
-	if sess, ok := ctx.Value(kCtxKey).(*Session[S]); ok {
+	sess, ok := ctx.Value(kCtxKey).(*Session[S])
+	if ok {
+		if sess.IsMFARequired {
+			return sess, shield.ErrMFARequired
+		}
+
 		return sess, nil
 	}
 
@@ -151,6 +165,7 @@ func FromContext[S any](ctx context.Context) (*Session[S], error) {
 }
 
 // IsAuthenticated returns true if the user is authorized.
-func IsAuthenticated(ctx context.Context) bool {
-	return ctx.Value(kCtxKey) != nil
+func IsAuthenticated[S any](ctx context.Context) bool {
+	_, err := FromContext[S](ctx)
+	return err == nil
 }

@@ -95,7 +95,7 @@ type Handler[U, S any] struct {
 	sender        shieldsender.Sender
 }
 
-// It provides functionality to.
+// NewHandler creates a new password Handler.
 func NewHandler[U, S any](
 	pool *pgxpool.Pool,
 	authenticator shielduser.Authenticator[U, S],
@@ -220,14 +220,14 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	return nil
 }
 
-func (h *Handler[U, _]) HandleUserRegistration(
+func (h *Handler[U, S]) HandleUserRegistration(
 	ctx context.Context,
 	email, password string,
 ) (shielduser.User[U], error) {
 	var user shielduser.User[U]
 
 	// Forbid authorized user access.
-	if shielduser.IsAuthenticated(ctx) {
+	if shielduser.IsAuthenticated[S](ctx) {
 		return user, shield.ErrAuthenticatedUser
 	}
 
@@ -325,14 +325,14 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 	return uid, nil
 }
 
-func (h *Handler[U, _]) HandleUserLogin(
+func (h *Handler[U, S]) HandleUserLogin(
 	ctx context.Context,
 	email, password string,
 ) (shielduser.User[U], error) {
 	var user shielduser.User[U]
 
 	// Forbid authorized user access.
-	if shielduser.IsAuthenticated(ctx) {
+	if shielduser.IsAuthenticated[S](ctx) {
 		return user, shield.ErrAuthenticatedUser
 	}
 

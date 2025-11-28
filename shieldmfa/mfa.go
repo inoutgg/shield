@@ -53,7 +53,7 @@ func IsUserMFARequiredError(err error) bool {
 	return errors.As(err, &t)
 }
 
-// MFA returns a list of enabled MFAs for the user.
+// UserMFA returns a list of enabled MFAs for the user.
 //
 // If no MFAs are enabled a ErrNoMFAs is returned.
 func UserMFA(ctx context.Context, dbtx dbsqlc.DBTX, userID typeid.TypeID) ([]string, error) {

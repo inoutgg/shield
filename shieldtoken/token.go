@@ -14,7 +14,7 @@ var ErrTokenNotFound = errors.New("shield/token: no token found")
 func FromRequest(req *http.Request) (string, error) {
 	value := req.Header.Get("Authorization")
 	if value != "" {
-		tok, err := token.TokenFromBearerString(value)
+		tok, err := token.FromBearerString(value)
 		if err != nil {
 			return "", httperror.FromError(
 				err,

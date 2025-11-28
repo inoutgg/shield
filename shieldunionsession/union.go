@@ -1,6 +1,6 @@
-// Package union provides an authneticator that sequentially tries to authenticate
+// Package shieldunionsession provides an authneticator that sequentially tries to authenticate
 // user session with provided authenticators.
-package union
+package shieldunionsession
 
 import (
 	"context"

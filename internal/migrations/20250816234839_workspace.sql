@@ -31,9 +31,6 @@ CREATE TABLE IF NOT EXISTS shield_workspace_teams (
 
   FOREIGN KEY (workspace_id) REFERENCES shield_workspaces (id)
     ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  FOREIGN KEY (id) REFERENCES shield_teams (id)
-    ON DELETE CASCADE
     ON UPDATE CASCADE
 );
 
@@ -51,7 +48,7 @@ CREATE TABLE IF NOT EXISTS shield_workspace_team_members (
   FOREIGN KEY (workspace_id) REFERENCES shield_workspaces (id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  FOREIGN KEY (team_id) REFERENCES shield_teams (id)
+  FOREIGN KEY (workspace_id, team_id) REFERENCES shield_workspace_teams (workspace_id, id)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 );
@@ -74,7 +71,7 @@ CREATE TABLE IF NOT EXISTS shield_workspace_membership_invitations (
   FOREIGN KEY (workspace_id) REFERENCES shield_workspaces (id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  FOREIGN KEY (team_id) REFERENCES shield_teams (id)
+  FOREIGN KEY (workspace_id, team_id) REFERENCES shield_workspace_teams (workspace_id, id)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 );

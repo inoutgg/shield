@@ -1,4 +1,4 @@
-// Passkey adds a passkey authentication mechanism.
+// Package shieldpasskey adds a passkey authentication mechanism.
 package shieldpasskey
 
 import "go.inout.gg/foundations/debug"

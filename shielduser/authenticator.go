@@ -11,14 +11,12 @@ import (
 
 // Session is a session that is issued when a user is authenticated.
 type Session[T any] struct {
-	// T is used to carry additional data about the user session.
-	//
-	// It is expected to be defined by the application.
-	T *T
-
-	ExpiresAt time.Time
-	UserID    typeid.TypeID
-	ID        typeid.TypeID
+	ExpiresAt     time.Time
+	T             *T
+	Method        string
+	UserID        typeid.TypeID
+	ID            typeid.TypeID
+	IsMFARequired bool
 }
 
 // Authenticator authenticates the user.
@@ -27,6 +25,8 @@ type Authenticator[U, S any] interface {
 	//
 	// Session might be partially issued, meaning that the session is created but
 	// not fully authenticated, i.e., when user is required MFA authentication.
+	//
+	// If MFA is required, the session is returned along with a shield.ErrMFARequired error.
 	Issue(
 		http.ResponseWriter,
 		*http.Request,
@@ -37,6 +37,8 @@ type Authenticator[U, S any] interface {
 	//
 	// It returns a session if the user is authenticated, otherwise it returns
 	// a shield.ErrUnauthenticatedUser error.
+	//
+	// If MFA is required, the session is returned along with a shield.ErrMFARequired error.
 	Authenticate(http.ResponseWriter, *http.Request) (Session[S], error)
 
 	// ExpireSessions closes all sessions, but one assigned to a the context.

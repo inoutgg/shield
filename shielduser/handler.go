@@ -51,7 +51,7 @@ func (h *Handler[S]) HandleChangeEmail(ctx context.Context, email string) error 
 		_ = tx.Rollback(ctx)
 	}()
 
-	if err = dbsqlc.New().ChangeUserEmailByID(ctx, tx, dbsqlc.ChangeUserEmailByIDParams{
+	if err := dbsqlc.New().ChangeUserEmailByID(ctx, tx, dbsqlc.ChangeUserEmailByIDParams{
 		ID:    sess.UserID,
 		Email: email,
 	}); err != nil {
@@ -61,7 +61,7 @@ func (h *Handler[S]) HandleChangeEmail(ctx context.Context, email string) error 
 		)
 	}
 
-	if err = dbsqlc.New().ChangePasswordCredentialEmailByUserID(ctx, tx, dbsqlc.ChangePasswordCredentialEmailByUserIDParams{
+	if err := dbsqlc.New().ChangePasswordCredentialEmailByUserID(ctx, tx, dbsqlc.ChangePasswordCredentialEmailByUserIDParams{
 		UserID: sess.UserID,
 		Email:  email,
 	}); err != nil {
@@ -71,14 +71,14 @@ func (h *Handler[S]) HandleChangeEmail(ctx context.Context, email string) error 
 		)
 	}
 
-	if err = tx.Commit(ctx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf(
 			"shielduser: failed to commit transaction: %w",
 			err,
 		)
 	}
 
-	if err = h.sender.Send(ctx, shieldsender.Message{
+	if err := h.sender.Send(ctx, shieldsender.Message{
 		Key:     shieldsender.MessageKeyEmailChange,
 		Email:   email,
 		Payload: nil,

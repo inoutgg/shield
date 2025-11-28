@@ -1,4 +1,4 @@
-// tid is a wrapper around typeid to expose shield specific IDs.
+// Package tid is a wrapper around typeid to expose shield specific IDs.
 package tid
 
 import (

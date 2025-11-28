@@ -182,8 +182,10 @@ func (h *Handler) CreateRecoveryCodes(
 	return nil
 }
 
-// userID is the ID of the user to update recovery codes for.
-func (h *Handler) ReplaceRecoveryCodes(
+// RecreateRecoveryCodes recreates a new set of recovery codes for the user.RecreateRecoveryCodes
+//
+// Previous recovery codes are evicted.
+func (h *Handler) RecreateRecoveryCodes(
 	ctx context.Context,
 	userID typeid.TypeID,
 	replacedBy *typeid.TypeID,
@@ -203,7 +205,7 @@ func (h *Handler) ReplaceRecoveryCodes(
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := h.ReplaceRecoveryCodesInTx(ctx, userID, replacedBy, codes, tx); err != nil {
+	if err := h.RecreateRecoveryCodesInTx(ctx, userID, replacedBy, codes, tx); err != nil {
 		return err
 	}
 
@@ -217,7 +219,7 @@ func (h *Handler) ReplaceRecoveryCodes(
 	return nil
 }
 
-func (h *Handler) ReplaceRecoveryCodesInTx(
+func (h *Handler) RecreateRecoveryCodesInTx(
 	ctx context.Context,
 	userID typeid.TypeID,
 	replacedBy *typeid.TypeID,

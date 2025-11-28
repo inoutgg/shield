@@ -1,4 +1,4 @@
-package serversession
+package shieldserversession
 
 import (
 	"fmt"
@@ -15,16 +15,19 @@ import (
 // LogoutHandler is a handler that logs out the user and deletes the session.
 type LogoutHandler[U, S any] struct {
 	pool   *pgxpool.Pool
-	config *Config[U, S]
+	config Config[U, S]
 }
 
 func NewLogoutHandler[U, S any](
 	pool *pgxpool.Pool,
-	config *Config[U, S],
+	opts ...func(*Config[U, S]),
 ) *LogoutHandler[U, S] {
-	if config == nil {
-		config = NewConfig[U, S]()
+	var config Config[U, S]
+	for _, opt := range opts {
+		opt(&config)
 	}
+
+	config.defaults()
 
 	return &LogoutHandler[U, S]{pool, config}
 }

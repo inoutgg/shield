@@ -67,9 +67,9 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 
 ---- WORKSPACE ----
 
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_workspace_members ON shield_workspace_members;
-CREATE TRIGGER shield_trigger_autoupdate_updated_at_shield_workspace_members
-BEFORE UPDATE ON shield_workspace_members
+DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_workspace_team_members ON shield_workspace_team_members;
+CREATE TRIGGER shield_trigger_autoupdate_updated_at_shield_workspace_team_members
+BEFORE UPDATE ON shield_workspace_team_members
 FOR EACH ROW
 EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 

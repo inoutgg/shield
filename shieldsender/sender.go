@@ -7,17 +7,21 @@ import "context"
 type MessageKey string
 
 const (
-	// shieldpasswordreset.
+	// -------- shieldpasswordreset --------.
+
 	MessageKeyPasswordResetRequest MessageKey = "message_key_password_reset_request"
 	MessageKeyPasswordResetSuccess MessageKey = "message_key_password_reset_success"
 
-	// shieldpassword.
+	// -------- shieldpassword --------.
+
 	MessageKeyPasswordChange MessageKey = "message_key_password_change"
 
-	// shielduser.
+	// -------- shielduser --------.
+
 	MessageKeyEmailChange MessageKey = "message_key_email_change"
 
-	// shieldworkspace.
+	// -------- shieldworkspace --------.
+
 	MessageKeyWorkspaceInvite MessageKey = "message_key_workspace_invite"
 )
 

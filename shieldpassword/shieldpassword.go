@@ -1,4 +1,4 @@
-// Package password implements a user registration and login flows with password.
+// Package shieldpassword implements a user registration and login flows with password.
 package shieldpassword
 
 import (

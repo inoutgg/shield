@@ -3,7 +3,6 @@ cpus := shell('nproc --all')
 mod:
     go mod tidy
     go mod download
-    gomod2nix
 
 fmt:
     nix fmt

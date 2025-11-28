@@ -1,4 +1,3 @@
-// SSO implements authentication logic to sign in with OpenID providers.
 package sso
 
 import (

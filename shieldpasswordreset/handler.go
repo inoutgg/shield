@@ -90,7 +90,7 @@ func WithPasswordHasher(hasher shieldpassword.PasswordHasher) func(*Config) {
 	return func(cfg *Config) { cfg.PasswordHasher = hasher }
 }
 
-// ResetTokenMessagePayload is the payload for the reset token message.
+// PasswordResetRequestMessagePayload is the payload for the reset token message.
 type PasswordResetRequestMessagePayload struct {
 	Token string
 }
@@ -102,36 +102,36 @@ type PasswordResetRequestMessagePayload struct {
 //
 // Check out the FormHandler for a ready to use implementation that handles
 // HTTP form requests.
-type Handler struct {
+type Handler[S any] struct {
 	pool   *pgxpool.Pool
 	sender shieldsender.Sender
 	config *Config
 }
 
-func NewHandler(
+func NewHandler[S any](
 	pool *pgxpool.Pool,
 	sender shieldsender.Sender,
 	config *Config,
-) *Handler {
+) *Handler[S] {
 	if config == nil {
 		config = NewConfig()
 	}
 
 	config.assert()
 
-	h := Handler{pool, sender, config}
+	h := Handler[S]{pool, sender, config}
 	h.assert()
 
 	return &h
 }
 
 // HandlePasswordReset handles a password reset request.
-func (h *Handler) HandlePasswordReset(
+func (h *Handler[S]) HandlePasswordReset(
 	ctx context.Context,
 	email string,
 ) error {
 	// Forbid authorized user access.
-	if shielduser.IsAuthenticated(ctx) {
+	if shielduser.IsAuthenticated[S](ctx) {
 		return shield.ErrAuthenticatedUser
 	}
 
@@ -192,7 +192,7 @@ func (h *Handler) HandlePasswordReset(
 	return nil
 }
 
-func (h *Handler) HandlePasswordResetConfirm(
+func (h *Handler[_]) HandlePasswordResetConfirm(
 	ctx context.Context,
 	password, tokStr string,
 ) error {
@@ -286,7 +286,7 @@ func (h *Handler) HandlePasswordResetConfirm(
 	return nil
 }
 
-func (h *Handler) assert() {
+func (h *Handler[_]) assert() {
 	debug.Assert(h.pool != nil, "pool must be set")
 	debug.Assert(h.sender != nil, "sender must be set")
 }

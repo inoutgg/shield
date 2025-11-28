@@ -3,21 +3,16 @@
 
   inputs = {
     devenv.url = "github:cachix/devenv";
-    nixpkgs.url = "github:cachix/devenv-nixpkgs/rolling";
+    nixpkgs.url = "nixpkgs/nixos-unstable";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-root.url = "github:srid/flake-root";
     git-hooks-nix.url = "github:cachix/git-hooks.nix";
-    gomod2nix = {
-      url = "github:nix-community/gomod2nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
     {
       flake-parts,
-      gomod2nix,
       ...
     }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
@@ -91,7 +86,6 @@
             };
 
             packages = with pkgs; [
-              gomod2nix.packages.${system}.default
               golangci-lint
               govulncheck
               gotools
