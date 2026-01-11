@@ -30,7 +30,7 @@ import (
 var _ shielduser.Authenticator[any, any] = (*sessionStrategy[any, any])(nil)
 
 //nolint:gochecknoglobals
-var d = debug.Debuglog("shield/session")
+var d = debug.Debuglog("shieldserversession")
 
 const (
 	DefaultCookieName = "usid"
@@ -143,7 +143,7 @@ func (s *sessionStrategy[U, S]) Issue(
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return sess, fmt.Errorf(
-			"shield/session: failed to begin transaction: %w",
+			"shieldserversession: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -158,7 +158,7 @@ func (s *sessionStrategy[U, S]) Issue(
 			isMFARequired = false
 		} else {
 			return sess, fmt.Errorf(
-				"shield/session: failed to get MFA: %w",
+				"shieldserversession: failed to get MFA: %w",
 				err,
 			)
 		}
@@ -173,7 +173,7 @@ func (s *sessionStrategy[U, S]) Issue(
 		})
 	if err != nil {
 		return sess, fmt.Errorf(
-			"shield/session: failed to create session: %w",
+			"shieldserversession: failed to create session: %w",
 			err,
 		)
 	}
@@ -187,7 +187,7 @@ func (s *sessionStrategy[U, S]) Issue(
 		sess, err = s.config.Hooker.OnSessionIssue(ctx, user, sess, tx)
 		if err != nil {
 			return sess, fmt.Errorf(
-				"shield/session: failed to create session: %w",
+				"shieldserversession: failed to create session: %w",
 				err,
 			)
 		}
@@ -195,7 +195,7 @@ func (s *sessionStrategy[U, S]) Issue(
 
 	if err := tx.Commit(ctx); err != nil {
 		return sess, fmt.Errorf(
-			"shield/session: failed to commit transaction: %w",
+			"shieldserversession: failed to commit transaction: %w",
 			err,
 		)
 	}
@@ -237,7 +237,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return sess, fmt.Errorf(
-			"shield/session: failed to begin transaction: %w",
+			"shieldserversession: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -260,7 +260,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 		}
 
 		return sess, fmt.Errorf(
-			"shield/session: failed to find user session: %w",
+			"shieldserversession: failed to find user session: %w",
 			err,
 		)
 	}
@@ -277,7 +277,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 		sess, err = s.config.Hooker.OnSessionAuthenticate(ctx, sess, tx)
 		if err != nil {
 			return sess, fmt.Errorf(
-				"shield/session: failed to authenticate session: %w",
+				"shieldserversession: failed to authenticate session: %w",
 				err,
 			)
 		}
@@ -285,7 +285,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 
 	if err := tx.Commit(ctx); err != nil {
 		return sess, fmt.Errorf(
-			"shield/session: failed to commit transaction: %w",
+			"shieldserversession: failed to commit transaction: %w",
 			err,
 		)
 	}
@@ -300,7 +300,7 @@ func (s *sessionStrategy[U, S]) ExpireSessions(
 	sess, err := shielduser.FromContext[S](ctx)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/session: failed to retrieve session from a given context: %w",
+			"shieldserversession: failed to retrieve session from a given context: %w",
 			err,
 		)
 	}
@@ -313,7 +313,7 @@ func (s *sessionStrategy[U, S]) ExpireSessions(
 		})
 	if err != nil {
 		return fmt.Errorf(
-			"shield/session: failed to expire sessions: %w",
+			"shieldserversession: failed to expire sessions: %w",
 			err,
 		)
 	}
@@ -327,7 +327,7 @@ func (s *sessionStrategy[U, S]) ExpireSessions(
 
 		if err := s.config.Hooker.OnExpireSessions(ctx, sess.UserID, sess.ID); err != nil {
 			return fmt.Errorf(
-				"shield/session: failed to hook into session expiration: %w",
+				"shieldserversession: failed to hook into session expiration: %w",
 				err,
 			)
 		}

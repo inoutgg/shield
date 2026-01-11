@@ -23,7 +23,7 @@ func NewHandler(pool *pgxpool.Pool, config *Config) (*Handler, error) {
 	wa, err := webauthn.New(config.WebauthnConfig)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"shield/passkey: unable to initialize handler: %w",
+			"shieldpasskey: unable to initialize handler: %w",
 			err,
 		)
 	}
@@ -42,7 +42,7 @@ func (h *Handler) HandleStartUserLogin(
 		FindUserWithPasskeyCredentialByEmail(ctx, h.pool, email)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passkey: failed to retrieve a user: %w",
+			"shieldpasskey: failed to retrieve a user: %w",
 			err,
 		)
 	}
@@ -52,7 +52,7 @@ func (h *Handler) HandleStartUserLogin(
 	_, _, err = h.wa.BeginLogin(user, nil)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/passkey: unable to initialize passkey login flow: %w",
+			"shieldpasskey: unable to initialize passkey login flow: %w",
 			err,
 		)
 	}

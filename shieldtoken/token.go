@@ -8,7 +8,7 @@ import (
 	"go.inout.gg/foundations/token"
 )
 
-var ErrTokenNotFound = errors.New("shield/token: no token found")
+var ErrTokenNotFound = errors.New("shieldtoken: no token found")
 
 // FromRequest returns the token from the given HTTP request.
 func FromRequest(req *http.Request) (string, error) {

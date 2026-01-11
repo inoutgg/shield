@@ -66,7 +66,7 @@ func HandleCallback[T any](
 	extError := query.Get("error")
 	if extError != "" {
 		return nil, fmt.Errorf(
-			"shield/sso: external error: %s",
+			"shieldsso: external error: %s",
 			extError,
 		)
 	}
@@ -74,14 +74,14 @@ func HandleCallback[T any](
 	code := query.Get("code")
 	if code == "" {
 		return nil, errors.New(
-			"shield/sso: missing authentication code",
+			"shieldsso: missing authentication code",
 		)
 	}
 
 	token, err := provider.ExchangeCode(ctx, code)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"shield/sso: unable to exchange code for token: %w",
+			"shieldsso: unable to exchange code for token: %w",
 			err,
 		)
 	}
@@ -89,7 +89,7 @@ func HandleCallback[T any](
 	userInfo, err := provider.UserInfo(ctx, token)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"shield/sso: unable to get user info: %w",
+			"shieldsso: unable to get user info: %w",
 			err,
 		)
 	}

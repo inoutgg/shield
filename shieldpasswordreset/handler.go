@@ -242,12 +242,13 @@ func (h *Handler[_]) HandlePasswordResetConfirm(
 		)
 	}
 
-	if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-		ID:                   tid.MustCredentialID(),
-		UserID:               tok.UserID,
-		UserCredentialKey:    user.Email,
-		UserCredentialSecret: passwordHash,
-	}); err != nil {
+	if err := dbsqlc.New().
+		UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
+			ID:                   tid.MustCredentialID(),
+			UserID:               tok.UserID,
+			UserCredentialKey:    user.Email,
+			UserCredentialSecret: passwordHash,
+		}); err != nil {
 		return fmt.Errorf(
 			"shieldpasswordreset: failed to set user password: %w",
 			err,
@@ -255,10 +256,11 @@ func (h *Handler[_]) HandlePasswordResetConfirm(
 	}
 
 	// Once password is changed, we need to expire all sessions for this user.
-	if _, err := dbsqlc.New().ExpireAllSessionsByUserID(ctx, tx, dbsqlc.ExpireAllSessionsByUserIDParams{
-		UserID:    user.ID,
-		EvictedBy: &user.ID,
-	}); err != nil {
+	if _, err := dbsqlc.New().
+		ExpireAllSessionsByUserID(ctx, tx, dbsqlc.ExpireAllSessionsByUserIDParams{
+			UserID:    user.ID,
+			EvictedBy: &user.ID,
+		}); err != nil {
 		return fmt.Errorf(
 			"shieldpasswordreset: failed to expire sessions: %w",
 			err,

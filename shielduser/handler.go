@@ -61,10 +61,11 @@ func (h *Handler[S]) HandleChangeEmail(ctx context.Context, email string) error 
 		)
 	}
 
-	if err := dbsqlc.New().ChangePasswordCredentialEmailByUserID(ctx, tx, dbsqlc.ChangePasswordCredentialEmailByUserIDParams{
-		UserID: sess.UserID,
-		Email:  email,
-	}); err != nil {
+	if err := dbsqlc.New().
+		ChangePasswordCredentialEmailByUserID(ctx, tx, dbsqlc.ChangePasswordCredentialEmailByUserIDParams{
+			UserID: sess.UserID,
+			Email:  email,
+		}); err != nil {
 		return fmt.Errorf(
 			"shielduser: failed to change password credential email: %w",
 			err,

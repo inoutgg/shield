@@ -47,7 +47,7 @@ func (h *LogoutHandler[U, S]) Logout(
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/session: failed to begin transaction: %w",
+			"shieldserversession: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -57,7 +57,7 @@ func (h *LogoutHandler[U, S]) Logout(
 	sessID, err := dbsqlc.New().ExpireSessionByID(ctx, tx, sess.ID)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/session: failed to expire session: %w",
+			"shieldserversession: failed to expire session: %w",
 			err,
 		)
 	}
@@ -66,7 +66,7 @@ func (h *LogoutHandler[U, S]) Logout(
 	if hooker != nil {
 		if err := hooker.OnLogout(ctx, sess.UserID, sessID, tx); err != nil {
 			return fmt.Errorf(
-				"shield/session: failed to hook logout: %w",
+				"shieldserversession: failed to hook logout: %w",
 				err,
 			)
 		}
@@ -74,7 +74,7 @@ func (h *LogoutHandler[U, S]) Logout(
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf(
-			"shield/session: failed to commit transaction: %w",
+			"shieldserversession: failed to commit transaction: %w",
 			err,
 		)
 	}

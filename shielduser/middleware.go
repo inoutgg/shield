@@ -19,7 +19,7 @@ type ctxKey struct{}
 
 var kCtxKey = ctxKey{} //nolint:gochecknoglobals
 
-var d = debug.Debuglog("shield/shielduser") //nolint:gochecknoglobals
+var d = debug.Debuglog("shielduser") //nolint:gochecknoglobals
 
 // Config is the configuration for the middleware.
 type Config struct {

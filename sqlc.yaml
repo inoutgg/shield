@@ -1,6 +1,6 @@
 version: "2"
 sql:
-  - schema: "internal/migrations"
+  - schema: "sql/schema.sql"
     queries:
       - "internal/dbsqlc/session_query.sql"
       - "internal/dbsqlc/password_query.sql"
@@ -190,7 +190,7 @@ sql:
               package: "typeid"
               type: "TypeID"
 
-  - schema: "internal/migrations"
+  - schema: "sql/schema.sql"
     queries:
       - "internal/dbsqlctest/user_query.sql"
       - "internal/dbsqlctest/password_query.sql"

@@ -168,12 +168,13 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	}
 
 	if dbUser.PasswordHash == nil && oldPassword == "" {
-		if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-			ID:                   tid.MustCredentialID(),
-			UserID:               dbUser.ID,
-			UserCredentialKey:    dbUser.Email,
-			UserCredentialSecret: passwordHash,
-		}); err != nil {
+		if err := dbsqlc.New().
+			UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
+				ID:                   tid.MustCredentialID(),
+				UserID:               dbUser.ID,
+				UserCredentialKey:    dbUser.Email,
+				UserCredentialSecret: passwordHash,
+			}); err != nil {
 			return fmt.Errorf(
 				"shieldpassword: failed to create user credential: %w",
 				err,
@@ -185,7 +186,10 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 			dbUser.ID,
 		)
 	} else {
-		ok, err := h.config.PasswordHasher.Verify(pointer.ToValue(dbUser.PasswordHash, ""), oldPassword)
+		ok, err := h.config.PasswordHasher.Verify(
+			pointer.ToValue(dbUser.PasswordHash, ""),
+			oldPassword,
+		)
 		if err != nil {
 			return fmt.Errorf("shieldpassword: failed to verify password: %w", err)
 		}
@@ -310,12 +314,13 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 		)
 	}
 
-	if err := dbsqlc.New().UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-		ID:                   tid.MustCredentialID(),
-		UserID:               uid,
-		UserCredentialKey:    email,
-		UserCredentialSecret: passwordHash,
-	}); err != nil {
+	if err := dbsqlc.New().
+		UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
+			ID:                   tid.MustCredentialID(),
+			UserID:               uid,
+			UserCredentialKey:    email,
+			UserCredentialSecret: passwordHash,
+		}); err != nil {
 		return uid, fmt.Errorf(
 			"shieldpassword: failed to register a user: %w",
 			err,

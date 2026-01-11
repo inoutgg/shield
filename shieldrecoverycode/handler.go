@@ -161,7 +161,7 @@ func (h *Handler) CreateRecoveryCodes(
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/recovery_code: failed to begin transaction: %w",
+			"shieldrecoverycode: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -174,7 +174,7 @@ func (h *Handler) CreateRecoveryCodes(
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf(
-			"shield/recovery_code: failed to commit transaction: %w",
+			"shieldrecoverycode: failed to commit transaction: %w",
 			err,
 		)
 	}
@@ -198,7 +198,7 @@ func (h *Handler) RecreateRecoveryCodes(
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
-			"shield/recovery_code: failed to begin transaction: %w",
+			"shieldrecoverycode: failed to begin transaction: %w",
 			err,
 		)
 	}
@@ -211,7 +211,7 @@ func (h *Handler) RecreateRecoveryCodes(
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf(
-			"shield/recovery_code: failed to commit transaction: %w",
+			"shieldrecoverycode: failed to commit transaction: %w",
 			err,
 		)
 	}
@@ -249,7 +249,7 @@ func (h *Handler) EvictRecoveryCodesInTx(
 	}
 	if err := dbsqlc.New().EvictUnconsumedRecoveryCodeBatch(ctx, tx, arg); err != nil {
 		return fmt.Errorf(
-			"shield/recovery_code: failed to evict recovery codes: %w",
+			"shieldrecoverycode: failed to evict recovery codes: %w",
 			err,
 		)
 	}
@@ -275,7 +275,7 @@ func (h *Handler) CreateRecoveryCodesInTx(
 
 	if _, err := dbsqlc.New().CreateRecoveryCodeBatch(ctx, tx, rows); err != nil {
 		return fmt.Errorf(
-			"shield/recovery_code: failed to create recovery codes: %w",
+			"shieldrecoverycode: failed to create recovery codes: %w",
 			err,
 		)
 	}

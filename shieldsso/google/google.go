@@ -66,7 +66,7 @@ func (p *provider[T]) UserInfo(
 	_, err := p.provider.UserInfo(ctx, p.config.TokenSource(ctx, token))
 	if err != nil {
 		return nil, fmt.Errorf(
-			"shield/sso: unable to fetch user info for google account: %w",
+			"shieldsso: unable to fetch user info for google account: %w",
 			err,
 		)
 	}
