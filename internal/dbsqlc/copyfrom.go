@@ -29,7 +29,6 @@ func (r *iteratorForCreateRecoveryCodeBatch) Next() bool {
 
 func (r iteratorForCreateRecoveryCodeBatch) Values() ([]interface{}, error) {
 	return []interface{}{
-		r.rows[0].ID,
 		r.rows[0].UserID,
 		r.rows[0].RecoveryCodeHash,
 		r.rows[0].IsConsumable,
@@ -41,5 +40,5 @@ func (r iteratorForCreateRecoveryCodeBatch) Err() error {
 }
 
 func (q *Queries) CreateRecoveryCodeBatch(ctx context.Context, db DBTX, arg []CreateRecoveryCodeBatchParams) (int64, error) {
-	return db.CopyFrom(ctx, []string{"shield_recovery_codes"}, []string{"id", "user_id", "recovery_code_hash", "is_consumable"}, &iteratorForCreateRecoveryCodeBatch{rows: arg})
+	return db.CopyFrom(ctx, []string{"shield_recovery_codes"}, []string{"user_id", "recovery_code_hash", "is_consumable"}, &iteratorForCreateRecoveryCodeBatch{rows: arg})
 }

@@ -7,13 +7,10 @@ package dbsqlc
 
 import (
 	"context"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 type CreateRecoveryCodeBatchParams struct {
-	ID               typeid.TypeID
-	UserID           typeid.TypeID
+	UserID           int64
 	RecoveryCodeHash string
 	IsConsumable     bool
 }
@@ -27,8 +24,8 @@ WHERE user_id = $2 AND is_consumable = TRUE
 `
 
 type EvictUnconsumedRecoveryCodeBatchParams struct {
-	EvictedBy *typeid.TypeID
-	UserID    typeid.TypeID
+	EvictedBy *int64
+	UserID    int64
 }
 
 func (q *Queries) EvictUnconsumedRecoveryCodeBatch(ctx context.Context, db DBTX, arg EvictUnconsumedRecoveryCodeBatchParams) error {

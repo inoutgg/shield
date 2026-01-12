@@ -6,33 +6,31 @@ package dbsqlctest
 
 import (
 	"time"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 type ShieldPasswordResetToken struct {
-	ID        typeid.TypeID
+	ID        int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	ExpiresAt time.Time
-	UserID    typeid.TypeID
+	UserID    int64
 }
 
 type ShieldRecoveryCode struct {
-	ID               typeid.TypeID
+	ID               int64
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
-	UserID           typeid.TypeID
+	UserID           int64
 	RecoveryCodeHash string
 	IsConsumable     bool
-	EvictedBy        *typeid.TypeID
+	EvictedBy        *int64
 	EvictedAt        time.Time
 }
 
 type ShieldUser struct {
-	ID              typeid.TypeID
+	ID              int64
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -40,46 +38,46 @@ type ShieldUser struct {
 }
 
 type ShieldUserCredential struct {
-	ID                   typeid.TypeID
+	ID                   int64
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	Name                 string
-	UserID               typeid.TypeID
+	UserID               int64
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
 
 type ShieldUserEmailVerificationToken struct {
-	ID        typeid.TypeID
+	ID        int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	IsUsed    bool
 	Token     string
 	Email     string
-	UserID    typeid.TypeID
+	UserID    int64
 }
 
 type ShieldUserMfa struct {
-	ID        typeid.TypeID
+	ID        int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
-	UserID    typeid.TypeID
+	UserID    int64
 }
 
 type ShieldUserSession struct {
-	ID            typeid.TypeID
+	ID            int64
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ExpiresAt     time.Time
-	UserID        typeid.TypeID
-	EvictedBy     *typeid.TypeID
+	UserID        int64
+	EvictedBy     *int64
 	IsMfaRequired bool
 }
 
 type ShieldWorkspace struct {
-	ID        typeid.TypeID
-	OwnedBy   typeid.TypeID
+	ID        int64
+	OwnedBy   int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
@@ -87,9 +85,9 @@ type ShieldWorkspace struct {
 }
 
 type ShieldWorkspaceMembershipInvitation struct {
-	ID          typeid.TypeID
-	WorkspaceID typeid.TypeID
-	TeamID      typeid.TypeID
+	ID          int64
+	WorkspaceID int64
+	TeamID      int64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	MemberEmail string
@@ -100,8 +98,8 @@ type ShieldWorkspaceMembershipInvitation struct {
 }
 
 type ShieldWorkspaceTeam struct {
-	ID          typeid.TypeID
-	WorkspaceID typeid.TypeID
+	ID          int64
+	WorkspaceID int64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	IsSystem    bool
@@ -111,10 +109,10 @@ type ShieldWorkspaceTeam struct {
 }
 
 type ShieldWorkspaceTeamMember struct {
-	ID          string
-	WorkspaceID string
-	TeamID      string
+	ID          int64
+	WorkspaceID int64
+	TeamID      int64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	MemberID    string
+	MemberID    int64
 }

@@ -8,31 +8,23 @@ package dbsqlc
 import (
 	"context"
 	"time"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const createUserPasskeyCredential = `-- name: CreateUserPasskeyCredential :exec
 INSERT INTO shield_user_credentials
-  (id, name, user_id, user_credential_key, user_credential_secret)
+  (name, user_id, user_credential_key, user_credential_secret)
 VALUES
-  ($1, 'passkey', $2, $3, $4)
+  ('passkey', $1, $2, $3)
 `
 
 type CreateUserPasskeyCredentialParams struct {
-	ID                   typeid.TypeID
-	UserID               typeid.TypeID
+	UserID               int64
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
 
 func (q *Queries) CreateUserPasskeyCredential(ctx context.Context, db DBTX, arg CreateUserPasskeyCredentialParams) error {
-	_, err := db.Exec(ctx, createUserPasskeyCredential,
-		arg.ID,
-		arg.UserID,
-		arg.UserCredentialKey,
-		arg.UserCredentialSecret,
-	)
+	_, err := db.Exec(ctx, createUserPasskeyCredential, arg.UserID, arg.UserCredentialKey, arg.UserCredentialSecret)
 	return err
 }
 
@@ -48,7 +40,7 @@ WHERE u.email = $1
 `
 
 type FindUserWithPasskeyCredentialByEmailRow struct {
-	ID              typeid.TypeID
+	ID              int64
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string

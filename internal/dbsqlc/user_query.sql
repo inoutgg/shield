@@ -1,6 +1,7 @@
--- name: CreateUser :exec
-INSERT INTO shield_users (id, email)
-VALUES (@id, @email);
+-- name: CreateUser :one
+INSERT INTO shield_users (email)
+VALUES (@email)
+RETURNING id;
 
 -- name: FindUserByID :one
 SELECT * FROM shield_users WHERE id = @id LIMIT 1;

@@ -1,8 +1,8 @@
 -- name: CreateUserPasskeyCredential :exec
 INSERT INTO shield_user_credentials
-  (id, name, user_id, user_credential_key, user_credential_secret)
+  (name, user_id, user_credential_key, user_credential_secret)
 VALUES
-  (@id, 'passkey', @user_id, @user_credential_key, @user_credential_secret);
+  ('passkey', @user_id, @user_credential_key, @user_credential_secret);
 
 -- name: FindUserWithPasskeyCredentialByEmail :one
 SELECT u.*, credential.user_credential_secret::JSON AS user_credential

@@ -1,8 +1,8 @@
 -- name: CreateRecoveryCodeBatch :copyfrom
 INSERT INTO shield_recovery_codes
-  (id, user_id, recovery_code_hash, is_consumable)
+  (user_id, recovery_code_hash, is_consumable)
 VALUES
-  (@id, @user_id, @recovery_code_hash, @is_consumable);
+  (@user_id, @recovery_code_hash, @is_consumable);
 
 -- name: EvictUnconsumedRecoveryCodeBatch :exec
 UPDATE shield_recovery_codes

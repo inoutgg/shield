@@ -7,15 +7,13 @@ package dbsqlc
 
 import (
 	"context"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const getUserMFAs = `-- name: GetUserMFAs :many
 SELECT id, created_at, updated_at, name, user_id FROM shield_user_mfas WHERE user_id = $1
 `
 
-func (q *Queries) GetUserMFAs(ctx context.Context, db DBTX, userID typeid.TypeID) ([]ShieldUserMfa, error) {
+func (q *Queries) GetUserMFAs(ctx context.Context, db DBTX, userID int64) ([]ShieldUserMfa, error) {
 	rows, err := db.Query(ctx, getUserMFAs, userID)
 	if err != nil {
 		return nil, err

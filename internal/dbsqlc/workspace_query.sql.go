@@ -8,8 +8,6 @@ package dbsqlc
 import (
 	"context"
 	"time"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const acceptWorkspaceInvitation = `-- name: AcceptWorkspaceInvitation :exec
@@ -18,51 +16,54 @@ SET status = 'accepted', accepted_at = NOW(), expires_at = NOW()
 WHERE id = $1
 `
 
-func (q *Queries) AcceptWorkspaceInvitation(ctx context.Context, db DBTX, invitationID typeid.TypeID) error {
+func (q *Queries) AcceptWorkspaceInvitation(ctx context.Context, db DBTX, invitationID int64) error {
 	_, err := db.Exec(ctx, acceptWorkspaceInvitation, invitationID)
 	return err
 }
 
-const createTeam = `-- name: CreateTeam :exec
-INSERT INTO shield_workspace_teams (id, workspace_id, name, handle, metadata, is_system)
-VALUES ($1, $2, $3, $4, $5, $6)
+const createTeam = `-- name: CreateTeam :one
+INSERT INTO shield_workspace_teams (workspace_id, name, handle, metadata, is_system)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id
 `
 
 type CreateTeamParams struct {
-	TeamID      typeid.TypeID
-	WorkspaceID typeid.TypeID
+	WorkspaceID int64
 	Name        string
 	Handle      string
 	Metadata    []byte
 	IsSystem    bool
 }
 
-func (q *Queries) CreateTeam(ctx context.Context, db DBTX, arg CreateTeamParams) error {
-	_, err := db.Exec(ctx, createTeam,
-		arg.TeamID,
+func (q *Queries) CreateTeam(ctx context.Context, db DBTX, arg CreateTeamParams) (int64, error) {
+	row := db.QueryRow(ctx, createTeam,
 		arg.WorkspaceID,
 		arg.Name,
 		arg.Handle,
 		arg.Metadata,
 		arg.IsSystem,
 	)
-	return err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
-const createWorkspace = `-- name: CreateWorkspace :exec
-INSERT INTO shield_workspaces (id, owned_by, name)
-VALUES ($1, $2, $3)
+const createWorkspace = `-- name: CreateWorkspace :one
+INSERT INTO shield_workspaces (owned_by, name)
+VALUES ($1, $2)
+RETURNING id
 `
 
 type CreateWorkspaceParams struct {
-	WorkspaceID typeid.TypeID
-	OwnedBy     typeid.TypeID
-	Name        string
+	OwnedBy int64
+	Name    string
 }
 
-func (q *Queries) CreateWorkspace(ctx context.Context, db DBTX, arg CreateWorkspaceParams) error {
-	_, err := db.Exec(ctx, createWorkspace, arg.WorkspaceID, arg.OwnedBy, arg.Name)
-	return err
+func (q *Queries) CreateWorkspace(ctx context.Context, db DBTX, arg CreateWorkspaceParams) (int64, error) {
+	row := db.QueryRow(ctx, createWorkspace, arg.OwnedBy, arg.Name)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const findWorkspaceByID = `-- name: FindWorkspaceByID :one
@@ -71,7 +72,7 @@ FROM shield_workspaces
 WHERE id = $1
 `
 
-func (q *Queries) FindWorkspaceByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldWorkspace, error) {
+func (q *Queries) FindWorkspaceByID(ctx context.Context, db DBTX, id int64) (ShieldWorkspace, error) {
 	row := db.QueryRow(ctx, findWorkspaceByID, id)
 	var i ShieldWorkspace
 	err := row.Scan(
@@ -86,21 +87,19 @@ func (q *Queries) FindWorkspaceByID(ctx context.Context, db DBTX, id typeid.Type
 }
 
 const inviteUserToWorkspaceByEmail = `-- name: InviteUserToWorkspaceByEmail :exec
-INSERT INTO shield_workspace_membership_invitations (id, workspace_id, team_id, member_email, expires_at)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO shield_workspace_membership_invitations (workspace_id, team_id, member_email, expires_at)
+VALUES ($1, $2, $3, $4)
 `
 
 type InviteUserToWorkspaceByEmailParams struct {
-	InvitationID typeid.TypeID
-	WorkspaceID  typeid.TypeID
-	TeamID       typeid.TypeID
-	MemberEmail  string
-	ExpiresAt    time.Time
+	WorkspaceID int64
+	TeamID      int64
+	MemberEmail string
+	ExpiresAt   time.Time
 }
 
 func (q *Queries) InviteUserToWorkspaceByEmail(ctx context.Context, db DBTX, arg InviteUserToWorkspaceByEmailParams) error {
 	_, err := db.Exec(ctx, inviteUserToWorkspaceByEmail,
-		arg.InvitationID,
 		arg.WorkspaceID,
 		arg.TeamID,
 		arg.MemberEmail,
@@ -115,7 +114,7 @@ SET status = 'rejected', rejected_at = NOW(), expires_at = NOW()
 WHERE id = $1
 `
 
-func (q *Queries) RejectWorkspaceInvitation(ctx context.Context, db DBTX, invitationID typeid.TypeID) error {
+func (q *Queries) RejectWorkspaceInvitation(ctx context.Context, db DBTX, invitationID int64) error {
 	_, err := db.Exec(ctx, rejectWorkspaceInvitation, invitationID)
 	return err
 }
@@ -127,8 +126,8 @@ WHERE id = $2
 `
 
 type TransferWorkspaceOwnershipParams struct {
-	NewOwnerID  typeid.TypeID
-	WorkspaceID typeid.TypeID
+	NewOwnerID  int64
+	WorkspaceID int64
 }
 
 func (q *Queries) TransferWorkspaceOwnership(ctx context.Context, db DBTX, arg TransferWorkspaceOwnershipParams) error {

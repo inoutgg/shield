@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"go.jetify.com/typeid/v2"
 )
 
 // Session is a session that is issued when a user is authenticated.
@@ -14,8 +13,8 @@ type Session[T any] struct {
 	ExpiresAt     time.Time
 	T             *T
 	Method        string
-	UserID        typeid.TypeID
-	ID            typeid.TypeID
+	UserID        int64
+	ID            int64
 	IsMFARequired bool
 }
 

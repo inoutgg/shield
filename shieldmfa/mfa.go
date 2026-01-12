@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"go.jetify.com/typeid/v2"
-
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/sliceutil"
 )
@@ -18,11 +16,11 @@ var _ error = UserMFARequiredError{} //nolint:exhaustruct
 // UserMFARequiredError represents an error that occurs
 // when a user is required to perform multi-factor authentication.
 type UserMFARequiredError struct {
-	userID typeid.TypeID
 	mfas   []string
+	userID int64
 }
 
-func NewUserMFARequiredError(userID typeid.TypeID, mfas []string) UserMFARequiredError {
+func NewUserMFARequiredError(userID int64, mfas []string) UserMFARequiredError {
 	return UserMFARequiredError{
 		userID: userID,
 		mfas:   mfas,
@@ -31,13 +29,13 @@ func NewUserMFARequiredError(userID typeid.TypeID, mfas []string) UserMFARequire
 
 func (e UserMFARequiredError) Error() string {
 	return fmt.Sprintf(
-		"shieldmfa: user %s requires multi-factor authentication",
-		e.userID.String(),
+		"shieldmfa: user %d requires multi-factor authentication",
+		e.userID,
 	)
 }
 
 // UserID returns the user ID that requires multi-factor authentication.
-func (e UserMFARequiredError) UserID() typeid.TypeID {
+func (e UserMFARequiredError) UserID() int64 {
 	return e.userID
 }
 
@@ -56,7 +54,7 @@ func IsUserMFARequiredError(err error) bool {
 // UserMFA returns a list of enabled MFAs for the user.
 //
 // If no MFAs are enabled a ErrNoMFAs is returned.
-func UserMFA(ctx context.Context, dbtx dbsqlc.DBTX, userID typeid.TypeID) ([]string, error) {
+func UserMFA(ctx context.Context, dbtx dbsqlc.DBTX, userID int64) ([]string, error) {
 	mfas, err := dbsqlc.New().GetUserMFAs(ctx, dbtx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("shieldmfa: failed to get user MFAs: %w", err)

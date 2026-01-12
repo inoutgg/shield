@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"go.inout.gg/foundations/dbsql"
-	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
@@ -14,12 +13,12 @@ import (
 type User[T any] struct {
 	T               *T
 	Email           string
-	ID              typeid.TypeID
+	ID              int64
 	IsEmailVerified bool
 }
 
 // UserByID retrieves a user by their ID.
-func UserByID(ctx context.Context, dbtx dbsqlc.DBTX, id typeid.TypeID) (User[any], error) {
+func UserByID(ctx context.Context, dbtx dbsqlc.DBTX, id int64) (User[any], error) {
 	var user User[any]
 
 	dbUser, err := dbsqlc.New().FindUserByID(ctx, dbtx, id)

@@ -15,7 +15,6 @@ import (
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/random"
-	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldpassword"
 	"go.inout.gg/shield/shieldsender"
 	"go.inout.gg/shield/shielduser"
@@ -157,7 +156,6 @@ func (h *Handler[S]) HandlePasswordReset(
 
 	tok, err := dbsqlc.New().
 		UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
-			ID:        tid.MustPasswordResetID(),
 			Token:     tokStr,
 			UserID:    user.ID,
 			ExpiresAt: time.Now().Add(h.config.TokenExpiryIn),
@@ -244,7 +242,6 @@ func (h *Handler[_]) HandlePasswordResetConfirm(
 
 	if err := dbsqlc.New().
 		UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-			ID:                   tid.MustCredentialID(),
 			UserID:               tok.UserID,
 			UserCredentialKey:    user.Email,
 			UserCredentialSecret: passwordHash,

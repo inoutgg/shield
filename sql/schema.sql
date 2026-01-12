@@ -3,7 +3,7 @@
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS shield_users (
-  id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   email VARCHAR(256) NOT NULL,
@@ -23,13 +23,13 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE UNLOGGED TABLE IF NOT EXISTS shield_user_email_verification_tokens (
-  id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_used BOOLEAN NOT NULL DEFAULT FALSE,
   token VARCHAR(16) NOT NULL,
   email VARCHAR(256) NOT NULL,
-  user_id VARCHAR(64) NOT NULL,
+  user_id BIGINT NOT NULL,
   PRIMARY KEY (user_id, id),
   UNIQUE (email, is_used),
   UNIQUE (token),
@@ -49,11 +49,11 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS shield_user_credentials (
-  id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   name VARCHAR(256) NOT NULL,
-  user_id VARCHAR(64) NOT NULL,
+  user_id BIGINT NOT NULL,
   user_credential_key VARCHAR(256) NOT NULL, -- can be SSO user ID, email, etc.
   user_credential_secret VARCHAR(4095) NOT NULL, -- can SSO token, password hash, etc.
   PRIMARY KEY (user_id, id),
@@ -75,13 +75,13 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE UNLOGGED TABLE IF NOT EXISTS shield_password_reset_tokens (
-  id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_used BOOLEAN NOT NULL DEFAULT FALSE,
   token VARCHAR(16) NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  user_id VARCHAR(64) NOT NULL,
+  user_id BIGINT NOT NULL,
   PRIMARY KEY (user_id, id),
   UNIQUE (token),
   UNIQUE (user_id, is_used),
@@ -102,12 +102,12 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE UNLOGGED TABLE IF NOT EXISTS shield_user_sessions (
-  id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  user_id VARCHAR(64) NOT NULL,
-  evicted_by VARCHAR(64) NULL,
+  user_id BIGINT NOT NULL,
+  evicted_by BIGINT NULL,
   is_mfa_required BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (user_id, id),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
@@ -130,13 +130,13 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS shield_recovery_codes (
-  id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  user_id VARCHAR(64) NOT NULL,
+  user_id BIGINT NOT NULL,
   recovery_code_hash VARCHAR(4095) NOT NULL,
   is_consumable BOOL NOT NULL DEFAULT TRUE,
-  evicted_by VARCHAR(64) NULL,
+  evicted_by BIGINT NULL,
   evicted_at TIMESTAMP WITH TIME ZONE NULL DEFAULT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
@@ -160,11 +160,12 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS shield_user_mfas (
-  id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   name VARCHAR(256) NOT NULL,
-  user_id VARCHAR(64) NOT NULL,
+  user_id BIGINT NOT NULL,
+  PRIMARY KEY (id),
   UNIQUE (user_id, name),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE
@@ -183,8 +184,8 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS shield_workspaces (
-  id VARCHAR(64) NOT NULL,
-  owned_by VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
+  owned_by BIGINT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   name VARCHAR(256) NOT NULL,
@@ -208,8 +209,8 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS shield_workspace_teams (
-  id VARCHAR(64) NOT NULL,
-  workspace_id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
+  workspace_id BIGINT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_system BOOLEAN NOT NULL DEFAULT FALSE,
@@ -237,12 +238,12 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS shield_workspace_team_members (
-  id VARCHAR(64) NOT NULL,
-  workspace_id VARCHAR(64) NOT NULL,
-  team_id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
+  workspace_id BIGINT NOT NULL,
+  team_id BIGINT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  member_id VARCHAR(64) NOT NULL,
+  member_id BIGINT NOT NULL,
   PRIMARY KEY (workspace_id, team_id, member_id),
   FOREIGN KEY (member_id) REFERENCES shield_users (id)
     ON DELETE CASCADE
@@ -266,9 +267,9 @@ EXECUTE FUNCTION shield_fn_autoupdate_updated_at();
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS shield_workspace_membership_invitations (
-  id VARCHAR(64) NOT NULL,
-  workspace_id VARCHAR(64) NOT NULL,
-  team_id VARCHAR(64) NOT NULL,
+  id BIGSERIAL NOT NULL,
+  workspace_id BIGINT NOT NULL,
+  team_id BIGINT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   member_email VARCHAR(256) NOT NULL,

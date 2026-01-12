@@ -7,8 +7,6 @@ package dbsqlctest
 
 import (
 	"context"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const testCreatePassword = `-- name: TestCreatePassword :one
@@ -20,8 +18,8 @@ RETURNING id, created_at, updated_at, name, user_id, user_credential_key, user_c
 `
 
 type TestCreatePasswordParams struct {
-	ID                   typeid.TypeID
-	UserID               typeid.TypeID
+	ID                   int64
+	UserID               int64
 	UserCredentialKey    string
 	UserCredentialSecret string
 }

@@ -1,6 +1,6 @@
 -- name: CreateUserSession :one
-INSERT INTO shield_user_sessions (id, user_id, expires_at, is_mfa_required)
-VALUES (@id, @user_id, @expires_at, @is_mfa_required)
+INSERT INTO shield_user_sessions (user_id, expires_at, is_mfa_required)
+VALUES (@user_id, @expires_at, @is_mfa_required)
 RETURNING id;
 
 -- name: FindActiveSessionByID :one
@@ -33,5 +33,5 @@ UPDATE shield_user_sessions
 SET
   expires_at = NOW(),
   evicted_by = @evicted_by
-WHERE user_id = @user_id AND id != ANY (@session_ids::TEXT[])
+WHERE user_id = @user_id AND id != ANY (@session_ids::BIGINT[])
 RETURNING id;

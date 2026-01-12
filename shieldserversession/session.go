@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -18,11 +19,9 @@ import (
 	"go.inout.gg/foundations/dbsql"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httpcookie"
-	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
-	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldmfa"
 	"go.inout.gg/shield/shielduser"
 )
@@ -61,14 +60,14 @@ type Hooker[U, S any] interface {
 	// OnLogout allows to hook into the session logout process.
 	OnLogout(
 		ctx context.Context,
-		userID, sessionID typeid.TypeID,
+		userID, sessionID int64,
 		tx pgx.Tx,
 	) error
 
 	// OnExpireSessions allows to hook into session expiration process.
 	OnExpireSessions(
 		ctx context.Context,
-		userID, sessionID typeid.TypeID,
+		userID, sessionID int64,
 	) error
 }
 
@@ -128,15 +127,7 @@ func (s *sessionStrategy[U, S]) Issue(
 	user shielduser.User[U],
 ) (shielduser.Session[S], error) {
 	ctx := r.Context()
-	sessionID := tid.MustSessionID()
 	expiresAt := time.Now().Add(s.config.ExpiresIn)
-
-	d(
-		"issuing a new session with id=%v for user=%v, expiring at=%v",
-		sessionID,
-		user.ID,
-		expiresAt,
-	)
 
 	var sess shielduser.Session[S]
 
@@ -164,9 +155,8 @@ func (s *sessionStrategy[U, S]) Issue(
 		}
 	}
 
-	_, err = dbsqlc.New().
+	sessionID, err := dbsqlc.New().
 		CreateUserSession(ctx, tx, dbsqlc.CreateUserSessionParams{
-			ID:            sessionID,
 			UserID:        user.ID,
 			ExpiresAt:     expiresAt,
 			IsMfaRequired: isMFARequired,
@@ -177,6 +167,13 @@ func (s *sessionStrategy[U, S]) Issue(
 			err,
 		)
 	}
+
+	d(
+		"issuing a new session with id=%v for user=%v, expiring at=%v",
+		sessionID,
+		user.ID,
+		expiresAt,
+	)
 
 	sess.ID = sessionID
 	sess.ExpiresAt = expiresAt
@@ -203,7 +200,7 @@ func (s *sessionStrategy[U, S]) Issue(
 	httpcookie.Set(
 		w,
 		s.config.CookieName,
-		sessionID.String(),
+		strconv.FormatInt(sessionID, 10),
 		httpcookie.WithHTTPOnly,
 		httpcookie.WithExpiresIn(s.config.ExpiresIn),
 	)
@@ -228,7 +225,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 		return sess, shield.ErrUnauthenticatedUser
 	}
 
-	sessionID, err := tid.FromString(sessionIDStr)
+	sessionID, err := strconv.ParseInt(sessionIDStr, 10, 64)
 	if err != nil {
 		httpcookie.Delete(w, r, s.config.CookieName)
 		return sess, shield.ErrUnauthenticatedUser
@@ -250,7 +247,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 			s.config.Logger.ErrorContext(
 				ctx,
 				"No sessions found with the given ID",
-				slog.String("session_id", sessionID.String()),
+				slog.Int64("session_id", sessionID),
 				slog.Any("error", err),
 			)
 
@@ -309,7 +306,7 @@ func (s *sessionStrategy[U, S]) ExpireSessions(
 		ExpireSomeSessionsByUserID(ctx, tx, dbsqlc.ExpireSomeSessionsByUserIDParams{
 			UserID:     sess.UserID,
 			EvictedBy:  &sess.UserID,
-			SessionIds: []string{sess.ID.String()},
+			SessionIds: []int64{sess.ID},
 		})
 	if err != nil {
 		return fmt.Errorf(

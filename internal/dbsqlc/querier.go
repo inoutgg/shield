@@ -6,39 +6,37 @@ package dbsqlc
 
 import (
 	"context"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 type Querier interface {
-	AcceptWorkspaceInvitation(ctx context.Context, db DBTX, invitationID typeid.TypeID) error
-	AllActiveSessions(ctx context.Context, db DBTX, userID typeid.TypeID) ([]ShieldUserSession, error)
+	AcceptWorkspaceInvitation(ctx context.Context, db DBTX, invitationID int64) error
+	AllActiveSessions(ctx context.Context, db DBTX, userID int64) ([]ShieldUserSession, error)
 	ChangePasswordCredentialEmailByUserID(ctx context.Context, db DBTX, arg ChangePasswordCredentialEmailByUserIDParams) error
 	ChangeUserEmailByID(ctx context.Context, db DBTX, arg ChangeUserEmailByIDParams) error
 	CreateRecoveryCodeBatch(ctx context.Context, db DBTX, arg []CreateRecoveryCodeBatchParams) (int64, error)
-	CreateTeam(ctx context.Context, db DBTX, arg CreateTeamParams) error
-	CreateUser(ctx context.Context, db DBTX, arg CreateUserParams) error
+	CreateTeam(ctx context.Context, db DBTX, arg CreateTeamParams) (int64, error)
+	CreateUser(ctx context.Context, db DBTX, email string) (int64, error)
 	CreateUserPasskeyCredential(ctx context.Context, db DBTX, arg CreateUserPasskeyCredentialParams) error
-	CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (typeid.TypeID, error)
-	CreateWorkspace(ctx context.Context, db DBTX, arg CreateWorkspaceParams) error
+	CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (int64, error)
+	CreateWorkspace(ctx context.Context, db DBTX, arg CreateWorkspaceParams) (int64, error)
 	DeleteExpiredPasswordResetTokens(ctx context.Context, db DBTX) error
 	EvictUnconsumedRecoveryCodeBatch(ctx context.Context, db DBTX, arg EvictUnconsumedRecoveryCodeBatchParams) error
-	ExpireAllSessionsByUserID(ctx context.Context, db DBTX, arg ExpireAllSessionsByUserIDParams) ([]typeid.TypeID, error)
-	ExpireSessionByID(ctx context.Context, db DBTX, id typeid.TypeID) (typeid.TypeID, error)
-	ExpireSomeSessionsByUserID(ctx context.Context, db DBTX, arg ExpireSomeSessionsByUserIDParams) ([]typeid.TypeID, error)
-	FindActiveSessionByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldUserSession, error)
+	ExpireAllSessionsByUserID(ctx context.Context, db DBTX, arg ExpireAllSessionsByUserIDParams) ([]int64, error)
+	ExpireSessionByID(ctx context.Context, db DBTX, id int64) (int64, error)
+	ExpireSomeSessionsByUserID(ctx context.Context, db DBTX, arg ExpireSomeSessionsByUserIDParams) ([]int64, error)
+	FindActiveSessionByID(ctx context.Context, db DBTX, id int64) (ShieldUserSession, error)
 	FindPasswordResetToken(ctx context.Context, db DBTX, token string) (ShieldPasswordResetToken, error)
 	FindUserByEmail(ctx context.Context, db DBTX, email string) (ShieldUser, error)
-	FindUserByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldUser, error)
+	FindUserByID(ctx context.Context, db DBTX, id int64) (ShieldUser, error)
 	FindUserWithPasskeyCredentialByEmail(ctx context.Context, db DBTX, email string) (FindUserWithPasskeyCredentialByEmailRow, error)
 	FindUserWithPasswordCredentialByEmail(ctx context.Context, db DBTX, email string) (FindUserWithPasswordCredentialByEmailRow, error)
-	FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID typeid.TypeID) (FindUserWithPasswordCredentialByUserIDRow, error)
-	FindWorkspaceByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldWorkspace, error)
-	GetUserMFAs(ctx context.Context, db DBTX, userID typeid.TypeID) ([]ShieldUserMfa, error)
+	FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID int64) (FindUserWithPasswordCredentialByUserIDRow, error)
+	FindWorkspaceByID(ctx context.Context, db DBTX, id int64) (ShieldWorkspace, error)
+	GetUserMFAs(ctx context.Context, db DBTX, userID int64) ([]ShieldUserMfa, error)
 	InviteUserToWorkspaceByEmail(ctx context.Context, db DBTX, arg InviteUserToWorkspaceByEmailParams) error
 	MarkPasswordResetTokenAsUsed(ctx context.Context, db DBTX, token string) error
 	MarkUserEmailVerificationTokenAsUsed(ctx context.Context, db DBTX, token string) error
-	RejectWorkspaceInvitation(ctx context.Context, db DBTX, invitationID typeid.TypeID) error
+	RejectWorkspaceInvitation(ctx context.Context, db DBTX, invitationID int64) error
 	TransferWorkspaceOwnership(ctx context.Context, db DBTX, arg TransferWorkspaceOwnershipParams) error
 	UpsertEmailVerificationToken(ctx context.Context, db DBTX, arg UpsertEmailVerificationTokenParams) (UpsertEmailVerificationTokenRow, error)
 	UpsertPasswordCredentialByUserID(ctx context.Context, db DBTX, arg UpsertPasswordCredentialByUserIDParams) error

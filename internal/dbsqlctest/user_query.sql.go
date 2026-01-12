@@ -7,24 +7,21 @@ package dbsqlctest
 
 import (
 	"context"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const testCreateUser = `-- name: TestCreateUser :one
-INSERT INTO shield_users (id, email, is_email_verified)
-VALUES ($1, $2, $3)
+INSERT INTO shield_users (email, is_email_verified)
+VALUES ($1, $2)
 RETURNING id, created_at, updated_at, email, is_email_verified
 `
 
 type TestCreateUserParams struct {
-	ID              typeid.TypeID
 	Email           string
 	IsEmailVerified bool
 }
 
 func (q *Queries) TestCreateUser(ctx context.Context, db DBTX, arg TestCreateUserParams) (ShieldUser, error) {
-	row := db.QueryRow(ctx, testCreateUser, arg.ID, arg.Email, arg.IsEmailVerified)
+	row := db.QueryRow(ctx, testCreateUser, arg.Email, arg.IsEmailVerified)
 	var i ShieldUser
 	err := row.Scan(
 		&i.ID,
@@ -70,7 +67,7 @@ const testFindUserByID = `-- name: TestFindUserByID :one
 SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) TestFindUserByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldUser, error) {
+func (q *Queries) TestFindUserByID(ctx context.Context, db DBTX, id int64) (ShieldUser, error) {
 	row := db.QueryRow(ctx, testFindUserByID, id)
 	var i ShieldUser
 	err := row.Scan(

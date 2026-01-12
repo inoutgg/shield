@@ -9,12 +9,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
-	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/random"
-	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldpassword"
 )
 
@@ -151,7 +149,7 @@ func (h *Handler) Generate() ([]string, error) {
 // CreateRecoveryCodes generates a new set of recovery codes.
 func (h *Handler) CreateRecoveryCodes(
 	ctx context.Context,
-	userID typeid.TypeID,
+	userID int64,
 ) error {
 	codes, err := h.Generate()
 	if err != nil {
@@ -187,8 +185,8 @@ func (h *Handler) CreateRecoveryCodes(
 // Previous recovery codes are evicted.
 func (h *Handler) RecreateRecoveryCodes(
 	ctx context.Context,
-	userID typeid.TypeID,
-	replacedBy *typeid.TypeID,
+	userID int64,
+	replacedBy *int64,
 ) error {
 	codes, err := h.Generate()
 	if err != nil {
@@ -221,8 +219,8 @@ func (h *Handler) RecreateRecoveryCodes(
 
 func (h *Handler) RecreateRecoveryCodesInTx(
 	ctx context.Context,
-	userID typeid.TypeID,
-	replacedBy *typeid.TypeID,
+	userID int64,
+	replacedBy *int64,
 	codes []string,
 	tx pgx.Tx,
 ) error {
@@ -239,8 +237,8 @@ func (h *Handler) RecreateRecoveryCodesInTx(
 
 func (h *Handler) EvictRecoveryCodesInTx(
 	ctx context.Context,
-	userID typeid.TypeID,
-	evictedBy *typeid.TypeID,
+	userID int64,
+	evictedBy *int64,
 	tx pgx.Tx,
 ) error {
 	arg := dbsqlc.EvictUnconsumedRecoveryCodeBatchParams{
@@ -259,14 +257,13 @@ func (h *Handler) EvictRecoveryCodesInTx(
 
 func (h *Handler) CreateRecoveryCodesInTx(
 	ctx context.Context,
-	userID typeid.TypeID,
+	userID int64,
 	codes []string,
 	tx pgx.Tx,
 ) error {
 	rows := make([]dbsqlc.CreateRecoveryCodeBatchParams, len(codes))
 	for i, code := range codes {
 		rows[i] = dbsqlc.CreateRecoveryCodeBatchParams{
-			ID:               tid.MustRecoveryKeyID(),
 			IsConsumable:     true,
 			RecoveryCodeHash: code,
 			UserID:           userID,

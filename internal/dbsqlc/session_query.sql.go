@@ -8,8 +8,6 @@ package dbsqlc
 import (
 	"context"
 	"time"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const allActiveSessions = `-- name: AllActiveSessions :many
@@ -18,7 +16,7 @@ FROM shield_user_sessions
 WHERE user_id = $1 AND expires_at > NOW()
 `
 
-func (q *Queries) AllActiveSessions(ctx context.Context, db DBTX, userID typeid.TypeID) ([]ShieldUserSession, error) {
+func (q *Queries) AllActiveSessions(ctx context.Context, db DBTX, userID int64) ([]ShieldUserSession, error) {
 	rows, err := db.Query(ctx, allActiveSessions, userID)
 	if err != nil {
 		return nil, err
@@ -47,26 +45,20 @@ func (q *Queries) AllActiveSessions(ctx context.Context, db DBTX, userID typeid.
 }
 
 const createUserSession = `-- name: CreateUserSession :one
-INSERT INTO shield_user_sessions (id, user_id, expires_at, is_mfa_required)
-VALUES ($1, $2, $3, $4)
+INSERT INTO shield_user_sessions (user_id, expires_at, is_mfa_required)
+VALUES ($1, $2, $3)
 RETURNING id
 `
 
 type CreateUserSessionParams struct {
-	ID            typeid.TypeID
-	UserID        typeid.TypeID
+	UserID        int64
 	ExpiresAt     time.Time
 	IsMfaRequired bool
 }
 
-func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (typeid.TypeID, error) {
-	row := db.QueryRow(ctx, createUserSession,
-		arg.ID,
-		arg.UserID,
-		arg.ExpiresAt,
-		arg.IsMfaRequired,
-	)
-	var id typeid.TypeID
+func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (int64, error) {
+	row := db.QueryRow(ctx, createUserSession, arg.UserID, arg.ExpiresAt, arg.IsMfaRequired)
+	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
@@ -81,19 +73,19 @@ RETURNING id
 `
 
 type ExpireAllSessionsByUserIDParams struct {
-	EvictedBy *typeid.TypeID
-	UserID    typeid.TypeID
+	EvictedBy *int64
+	UserID    int64
 }
 
-func (q *Queries) ExpireAllSessionsByUserID(ctx context.Context, db DBTX, arg ExpireAllSessionsByUserIDParams) ([]typeid.TypeID, error) {
+func (q *Queries) ExpireAllSessionsByUserID(ctx context.Context, db DBTX, arg ExpireAllSessionsByUserIDParams) ([]int64, error) {
 	rows, err := db.Query(ctx, expireAllSessionsByUserID, arg.EvictedBy, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []typeid.TypeID
+	var items []int64
 	for rows.Next() {
-		var id typeid.TypeID
+		var id int64
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
@@ -112,7 +104,7 @@ WHERE id = $1
 RETURNING id
 `
 
-func (q *Queries) ExpireSessionByID(ctx context.Context, db DBTX, id typeid.TypeID) (typeid.TypeID, error) {
+func (q *Queries) ExpireSessionByID(ctx context.Context, db DBTX, id int64) (int64, error) {
 	row := db.QueryRow(ctx, expireSessionByID, id)
 	err := row.Scan(&id)
 	return id, err
@@ -123,25 +115,25 @@ UPDATE shield_user_sessions
 SET
   expires_at = NOW(),
   evicted_by = $1
-WHERE user_id = $2 AND id != ANY ($3::TEXT[])
+WHERE user_id = $2 AND id != ANY ($3::BIGINT[])
 RETURNING id
 `
 
 type ExpireSomeSessionsByUserIDParams struct {
-	EvictedBy  *typeid.TypeID
-	UserID     typeid.TypeID
-	SessionIds []string
+	EvictedBy  *int64
+	UserID     int64
+	SessionIds []int64
 }
 
-func (q *Queries) ExpireSomeSessionsByUserID(ctx context.Context, db DBTX, arg ExpireSomeSessionsByUserIDParams) ([]typeid.TypeID, error) {
+func (q *Queries) ExpireSomeSessionsByUserID(ctx context.Context, db DBTX, arg ExpireSomeSessionsByUserIDParams) ([]int64, error) {
 	rows, err := db.Query(ctx, expireSomeSessionsByUserID, arg.EvictedBy, arg.UserID, arg.SessionIds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []typeid.TypeID
+	var items []int64
 	for rows.Next() {
-		var id typeid.TypeID
+		var id int64
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
@@ -160,7 +152,7 @@ WHERE id = $1 AND expires_at > NOW()
 LIMIT 1
 `
 
-func (q *Queries) FindActiveSessionByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldUserSession, error) {
+func (q *Queries) FindActiveSessionByID(ctx context.Context, db DBTX, id int64) (ShieldUserSession, error) {
 	row := db.QueryRow(ctx, findActiveSessionByID, id)
 	var i ShieldUserSession
 	err := row.Scan(

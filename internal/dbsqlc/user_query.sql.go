@@ -7,8 +7,6 @@ package dbsqlc
 
 import (
 	"context"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const changeUserEmailByID = `-- name: ChangeUserEmailByID :exec
@@ -19,7 +17,7 @@ WHERE id = $2
 
 type ChangeUserEmailByIDParams struct {
 	Email string
-	ID    typeid.TypeID
+	ID    int64
 }
 
 func (q *Queries) ChangeUserEmailByID(ctx context.Context, db DBTX, arg ChangeUserEmailByIDParams) error {
@@ -27,19 +25,17 @@ func (q *Queries) ChangeUserEmailByID(ctx context.Context, db DBTX, arg ChangeUs
 	return err
 }
 
-const createUser = `-- name: CreateUser :exec
-INSERT INTO shield_users (id, email)
-VALUES ($1, $2)
+const createUser = `-- name: CreateUser :one
+INSERT INTO shield_users (email)
+VALUES ($1)
+RETURNING id
 `
 
-type CreateUserParams struct {
-	ID    typeid.TypeID
-	Email string
-}
-
-func (q *Queries) CreateUser(ctx context.Context, db DBTX, arg CreateUserParams) error {
-	_, err := db.Exec(ctx, createUser, arg.ID, arg.Email)
-	return err
+func (q *Queries) CreateUser(ctx context.Context, db DBTX, email string) (int64, error) {
+	row := db.QueryRow(ctx, createUser, email)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const findUserByEmail = `-- name: FindUserByEmail :one
@@ -63,7 +59,7 @@ const findUserByID = `-- name: FindUserByID :one
 SELECT id, created_at, updated_at, email, is_email_verified FROM shield_users WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id typeid.TypeID) (ShieldUser, error) {
+func (q *Queries) FindUserByID(ctx context.Context, db DBTX, id int64) (ShieldUser, error) {
 	row := db.QueryRow(ctx, findUserByID, id)
 	var i ShieldUser
 	err := row.Scan(
@@ -102,15 +98,15 @@ FROM token
 `
 
 type UpsertEmailVerificationTokenParams struct {
-	ID        typeid.TypeID
-	UserID    typeid.TypeID
+	ID        int64
+	UserID    int64
 	Token     string
 	ExpiresAt bool
 }
 
 type UpsertEmailVerificationTokenRow struct {
 	Token string
-	ID    string
+	ID    int64
 }
 
 func (q *Queries) UpsertEmailVerificationToken(ctx context.Context, db DBTX, arg UpsertEmailVerificationTokenParams) (UpsertEmailVerificationTokenRow, error) {

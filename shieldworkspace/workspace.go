@@ -10,11 +10,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/dbsql"
-	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
-	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldsender"
 )
 
@@ -23,8 +21,8 @@ var DefaultInvitationExpiryIn = time.Hour * 24 * 7 //nolint:gochecknoglobals
 // Workspace represents a workspace.
 type Workspace struct {
 	Name    string
-	ID      typeid.TypeID
-	OwnedBy typeid.TypeID
+	ID      int64
+	OwnedBy int64
 }
 
 // Handler manages the lifecycle of workspaces.
@@ -68,16 +66,16 @@ func (c *Config) defaults() {
 }
 
 type WorkspaceInviteMessagePayload struct {
-	MemberID    *typeid.TypeID
+	MemberID    *int64
 	Email       string
-	WorkspaceID typeid.TypeID
+	WorkspaceID int64
 }
 
 // InviteUserToWorkspace invites a user to a workspace by email.
 func (h *Handler) InviteUserToWorkspace(
 	ctx context.Context,
-	workspaceID typeid.TypeID,
-	teamID typeid.TypeID,
+	workspaceID int64,
+	teamID int64,
 	memberEmail string,
 ) error {
 	tx, err := h.pool.Begin(ctx)
@@ -98,18 +96,17 @@ func (h *Handler) InviteUserToWorkspace(
 		)
 	}
 
-	var memberID *typeid.TypeID
+	var memberID *int64
 	if !dbsql.IsNotFoundError(err) {
 		memberID = &invitedUser.ID
 	}
 
 	err = dbsqlc.New().
 		InviteUserToWorkspaceByEmail(ctx, tx, dbsqlc.InviteUserToWorkspaceByEmailParams{
-			InvitationID: tid.MustWorkspaceMemberInvitationID(),
-			WorkspaceID:  workspaceID,
-			TeamID:       teamID,
-			MemberEmail:  memberEmail,
-			ExpiresAt:    time.Now().Add(h.config.InvitationExpiryIn),
+			WorkspaceID: workspaceID,
+			TeamID:      teamID,
+			MemberEmail: memberEmail,
+			ExpiresAt:   time.Now().Add(h.config.InvitationExpiryIn),
 		})
 	if err != nil {
 		return fmt.Errorf(
@@ -151,14 +148,11 @@ func (h *Handler) InviteUserToWorkspace(
 func (h *Handler) CreateWorkspace(
 	ctx context.Context,
 	name string,
-	ownerID typeid.TypeID,
-) (typeid.TypeID, typeid.TypeID, error) {
-	workspaceID := tid.MustWorkspaceID()
-	teamID := tid.MustWorkspaceTeamID()
-
+	ownerID int64,
+) (int64, int64, error) {
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		return workspaceID, teamID, fmt.Errorf(
+		return 0, 0, fmt.Errorf(
 			"shieldworkspace: failed to begin transaction: %w",
 			err,
 		)
@@ -166,28 +160,28 @@ func (h *Handler) CreateWorkspace(
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := dbsqlc.New().
+	workspaceID, err := dbsqlc.New().
 		CreateWorkspace(ctx, tx, dbsqlc.CreateWorkspaceParams{
-			WorkspaceID: workspaceID,
-			Name:        name,
-			OwnedBy:     ownerID,
-		}); err != nil {
-		return workspaceID, teamID, fmt.Errorf(
+			Name:    name,
+			OwnedBy: ownerID,
+		})
+	if err != nil {
+		return 0, 0, fmt.Errorf(
 			"shieldworkspace: failed to create workspace: %w",
 			err,
 		)
 	}
 
 	// Create a default team for the workspace
-	if err = dbsqlc.New().CreateTeam(ctx, tx, dbsqlc.CreateTeamParams{
-		TeamID:      teamID,
+	teamID, err := dbsqlc.New().CreateTeam(ctx, tx, dbsqlc.CreateTeamParams{
 		Name:        "Default",
 		Handle:      "default",
 		WorkspaceID: workspaceID,
 		IsSystem:    true,
 		Metadata:    nil,
-	}); err != nil {
-		return workspaceID, teamID, fmt.Errorf(
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf(
 			"shieldworkspace: failed to create default team: %w",
 			err,
 		)
@@ -200,7 +194,7 @@ func (h *Handler) CreateWorkspace(
 func FindWorkspace(
 	ctx context.Context,
 	dbtx dbsqlc.DBTX,
-	workspaceID typeid.TypeID,
+	workspaceID int64,
 ) (*Workspace, error) {
 	w, err := dbsqlc.New().FindWorkspaceByID(ctx, dbtx, workspaceID)
 	if err != nil {

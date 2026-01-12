@@ -12,11 +12,9 @@ import (
 	"go.inout.gg/foundations/dbsql"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/pointer"
-	"go.jetify.com/typeid/v2"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
-	"go.inout.gg/shield/internal/tid"
 	"go.inout.gg/shield/shieldsender"
 	"go.inout.gg/shield/shielduser"
 )
@@ -51,13 +49,13 @@ func (c *Config[U]) assert() {
 type Hooker[U any] interface {
 	// OnUserRegistration is called when registering a new user.
 	// Use this method to create an additional context for the user.
-	OnUserRegistration(context.Context, typeid.TypeID, pgx.Tx) (U, error)
+	OnUserRegistration(context.Context, int64, pgx.Tx) (U, error)
 
 	// OnUserLogin is called when a user is trying to login.
 	// Use this method to fetch additional data from the database for the user.
 	//
 	// Note that the user password is not verified at this moment yet.
-	OnUserLogin(context.Context, typeid.TypeID, pgx.Tx) (U, error)
+	OnUserLogin(context.Context, int64, pgx.Tx) (U, error)
 }
 
 // NewConfig creates a new config.
@@ -170,7 +168,6 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	if dbUser.PasswordHash == nil && oldPassword == "" {
 		if err := dbsqlc.New().
 			UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-				ID:                   tid.MustCredentialID(),
 				UserID:               dbUser.ID,
 				UserCredentialKey:    dbUser.Email,
 				UserCredentialSecret: passwordHash,
@@ -296,19 +293,15 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 	ctx context.Context,
 	email, passwordHash string,
 	tx pgx.Tx,
-) (typeid.TypeID, error) {
-	uid := tid.MustUserID()
-
-	if err := dbsqlc.New().CreateUser(ctx, tx, dbsqlc.CreateUserParams{
-		ID:    uid,
-		Email: email,
-	}); err != nil {
+) (int64, error) {
+	uid, err := dbsqlc.New().CreateUser(ctx, tx, email)
+	if err != nil {
 		if dbsql.IsUniqueViolationError(err) {
 			d("email already exists")
-			return uid, ErrUserExists
+			return 0, ErrUserExists
 		}
 
-		return uid, fmt.Errorf(
+		return 0, fmt.Errorf(
 			"shieldpassword: failed to register a user: %w",
 			err,
 		)
@@ -316,12 +309,11 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 
 	if err := dbsqlc.New().
 		UpsertPasswordCredentialByUserID(ctx, tx, dbsqlc.UpsertPasswordCredentialByUserIDParams{
-			ID:                   tid.MustCredentialID(),
 			UserID:               uid,
 			UserCredentialKey:    email,
 			UserCredentialSecret: passwordHash,
 		}); err != nil {
-		return uid, fmt.Errorf(
+		return 0, fmt.Errorf(
 			"shieldpassword: failed to register a user: %w",
 			err,
 		)

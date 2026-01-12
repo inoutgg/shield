@@ -7,26 +7,23 @@ package dbsqlctest
 
 import (
 	"context"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const createUserMFA = `-- name: CreateUserMFA :one
 INSERT INTO shield_user_mfas
-  (id, user_id, name)
+  (user_id, name)
 VALUES
-  ($1, $2, $3)
+  ($1, $2)
 RETURNING id, created_at, updated_at, name, user_id
 `
 
 type CreateUserMFAParams struct {
-	ID     typeid.TypeID
-	UserID typeid.TypeID
+	UserID int64
 	Name   string
 }
 
 func (q *Queries) CreateUserMFA(ctx context.Context, db DBTX, arg CreateUserMFAParams) (ShieldUserMfa, error) {
-	row := db.QueryRow(ctx, createUserMFA, arg.ID, arg.UserID, arg.Name)
+	row := db.QueryRow(ctx, createUserMFA, arg.UserID, arg.Name)
 	var i ShieldUserMfa
 	err := row.Scan(
 		&i.ID,
@@ -42,7 +39,7 @@ const getUserMFAsByUserID = `-- name: GetUserMFAsByUserID :many
 SELECT id, created_at, updated_at, name, user_id FROM shield_user_mfas WHERE user_id = $1
 `
 
-func (q *Queries) GetUserMFAsByUserID(ctx context.Context, db DBTX, userID typeid.TypeID) ([]ShieldUserMfa, error) {
+func (q *Queries) GetUserMFAsByUserID(ctx context.Context, db DBTX, userID int64) ([]ShieldUserMfa, error) {
 	rows, err := db.Query(ctx, getUserMFAsByUserID, userID)
 	if err != nil {
 		return nil, err

@@ -8,8 +8,6 @@ package dbsqlc
 import (
 	"context"
 	"time"
-
-	typeid "go.jetify.com/typeid/v2"
 )
 
 const changePasswordCredentialEmailByUserID = `-- name: ChangePasswordCredentialEmailByUserID :exec
@@ -20,7 +18,7 @@ WHERE user_id = $2 AND name = 'password'
 
 type ChangePasswordCredentialEmailByUserIDParams struct {
 	Email  string
-	UserID typeid.TypeID
+	UserID int64
 }
 
 func (q *Queries) ChangePasswordCredentialEmailByUserID(ctx context.Context, db DBTX, arg ChangePasswordCredentialEmailByUserIDParams) error {
@@ -71,7 +69,7 @@ WHERE u.email = $1
 `
 
 type FindUserWithPasswordCredentialByEmailRow struct {
-	ID              typeid.TypeID
+	ID              int64
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -105,7 +103,7 @@ WHERE shield_user.id = $1
 `
 
 type FindUserWithPasswordCredentialByUserIDRow struct {
-	ID              typeid.TypeID
+	ID              int64
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Email           string
@@ -113,7 +111,7 @@ type FindUserWithPasswordCredentialByUserIDRow struct {
 	PasswordHash    *string
 }
 
-func (q *Queries) FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID typeid.TypeID) (FindUserWithPasswordCredentialByUserIDRow, error) {
+func (q *Queries) FindUserWithPasswordCredentialByUserID(ctx context.Context, db DBTX, userID int64) (FindUserWithPasswordCredentialByUserIDRow, error) {
 	row := db.QueryRow(ctx, findUserWithPasswordCredentialByUserID, userID)
 	var i FindUserWithPasswordCredentialByUserIDRow
 	err := row.Scan(
@@ -142,11 +140,11 @@ const upsertPasswordCredentialByUserID = `-- name: UpsertPasswordCredentialByUse
 WITH
   credential AS (
     INSERT INTO shield_user_credentials
-      (id, name, user_id, user_credential_key, user_credential_secret)
+      (name, user_id, user_credential_key, user_credential_secret)
     VALUES
-      ($1, 'password', $2, $3, $4)
+      ('password', $1, $2, $3)
     ON CONFLICT (name, user_credential_key) DO UPDATE
-      SET user_credential_secret = $4
+      SET user_credential_secret = $3
     RETURNING id
   )
 SELECT id
@@ -154,19 +152,13 @@ FROM credential
 `
 
 type UpsertPasswordCredentialByUserIDParams struct {
-	ID                   typeid.TypeID
-	UserID               typeid.TypeID
+	UserID               int64
 	UserCredentialKey    string
 	UserCredentialSecret string
 }
 
 func (q *Queries) UpsertPasswordCredentialByUserID(ctx context.Context, db DBTX, arg UpsertPasswordCredentialByUserIDParams) error {
-	_, err := db.Exec(ctx, upsertPasswordCredentialByUserID,
-		arg.ID,
-		arg.UserID,
-		arg.UserCredentialKey,
-		arg.UserCredentialSecret,
-	)
+	_, err := db.Exec(ctx, upsertPasswordCredentialByUserID, arg.UserID, arg.UserCredentialKey, arg.UserCredentialSecret)
 	return err
 }
 
@@ -174,9 +166,9 @@ const upsertPasswordResetToken = `-- name: UpsertPasswordResetToken :one
 WITH
   token AS (
     INSERT INTO shield_password_reset_tokens
-      (id, user_id, token, expires_at, is_used)
+      (user_id, token, expires_at, is_used)
     VALUES
-      ($1, $2, $3, $4, FALSE)
+      ($1, $2, $3, FALSE)
     ON CONFLICT (user_id, is_used) DO UPDATE
       SET expires_at = greatest(
         excluded.expires_at,
@@ -189,25 +181,19 @@ FROM token
 `
 
 type UpsertPasswordResetTokenParams struct {
-	ID        typeid.TypeID
-	UserID    typeid.TypeID
+	UserID    int64
 	Token     string
 	ExpiresAt time.Time
 }
 
 type UpsertPasswordResetTokenRow struct {
 	Token     string
-	ID        string
+	ID        int64
 	ExpiresAt time.Time
 }
 
 func (q *Queries) UpsertPasswordResetToken(ctx context.Context, db DBTX, arg UpsertPasswordResetTokenParams) (UpsertPasswordResetTokenRow, error) {
-	row := db.QueryRow(ctx, upsertPasswordResetToken,
-		arg.ID,
-		arg.UserID,
-		arg.Token,
-		arg.ExpiresAt,
-	)
+	row := db.QueryRow(ctx, upsertPasswordResetToken, arg.UserID, arg.Token, arg.ExpiresAt)
 	var i UpsertPasswordResetTokenRow
 	err := row.Scan(&i.Token, &i.ID, &i.ExpiresAt)
 	return i, err

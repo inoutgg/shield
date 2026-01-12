@@ -2,9 +2,9 @@
 WITH
   credential AS (
     INSERT INTO shield_user_credentials
-      (id, name, user_id, user_credential_key, user_credential_secret)
+      (name, user_id, user_credential_key, user_credential_secret)
     VALUES
-      (@id, 'password', @user_id, @user_credential_key, @user_credential_secret)
+      ('password', @user_id, @user_credential_key, @user_credential_secret)
     ON CONFLICT (name, user_credential_key) DO UPDATE
       SET user_credential_secret = @user_credential_secret
     RETURNING id
@@ -41,9 +41,9 @@ WHERE user_id = @user_id AND name = 'password';
 WITH
   token AS (
     INSERT INTO shield_password_reset_tokens
-      (id, user_id, token, expires_at, is_used)
+      (user_id, token, expires_at, is_used)
     VALUES
-      (@id, @user_id, @token, @expires_at, FALSE)
+      (@user_id, @token, @expires_at, FALSE)
     ON CONFLICT (user_id, is_used) DO UPDATE
       SET expires_at = greatest(
         excluded.expires_at,
