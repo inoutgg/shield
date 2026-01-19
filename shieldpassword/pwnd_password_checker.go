@@ -53,9 +53,10 @@ func NewPwndPasswordChecker(opts ...func(*PwndPasswordCheckerConfig)) *PwndPassw
 
 func (c *PwndPasswordChecker) Check(ctx context.Context, password string) error {
 	//nolint:gosec // SHA1 is required by pwnedpasswords.com
-	hash := sha1.New().Sum([]byte(password))
-	prefix := fmt.Sprintf("%08x", hash[:5])
-	suffix := fmt.Sprintf("%08x", hash[5:])
+	hash := sha1.Sum([]byte(password))
+	hashHex := fmt.Sprintf("%X", hash)
+	prefix := hashHex[:5]
+	suffix := hashHex[5:]
 
 	req, err := http.NewRequestWithContext(
 		ctx,
@@ -98,7 +99,7 @@ func (c *PwndPasswordChecker) Check(ctx context.Context, password string) error 
 				return errors.New("shieldpassword: invalid response format")
 			}
 
-			if s == suffix && count > 0 {
+			if split[0] == suffix && count > 0 {
 				return ErrPwnedPassword
 			}
 		}
