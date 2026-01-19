@@ -1,4 +1,4 @@
-package shieldpasswordreset
+package shieldpassword
 
 import (
 	"cmp"
@@ -8,16 +8,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/must"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/random"
-	"go.inout.gg/shield/shieldpassword"
 	"go.inout.gg/shield/shieldsender"
-	"go.inout.gg/shield/shielduser"
 )
 
 // ErrUsedPasswordResetToken is returned when the password reset token has already been used.
@@ -26,33 +23,33 @@ var ErrUsedPasswordResetToken = errors.New(
 )
 
 const (
-	DefaultResetTokenExpiry = 12 * time.Hour
+	DefaultResetTokenExpiry = 15 * time.Minute
 	DefaultResetTokenLength = 32
 )
 
-// Config is the configuration for the password handler.
+// PasswordResetConfig is the configuration for the PasswordResetHandler.
 //
 // Make sure to use the NewConfig function to create a new config, instead
 // of instantiating the struct directly.
-type Config struct {
-	PasswordHasher shieldpassword.PasswordHasher // optional
-	Logger         *slog.Logger                  // optional
+type PasswordResetConfig struct {
+	PasswordHasher PasswordHasher // optional
+	Logger         *slog.Logger   // optional
 
 	// TokenLength set the length of the reset token.
 	//
-	// Defaults to DefaultResetTokenExpiry.
+	// Defaults to DefaultResetTokenLength
 	TokenLength int // optional
 
 	// TokenExpiryIn set the expiry time of the reset token.
 	//
-	// Defaults to DefaultResetTokenLength
+	// Defaults to DefaultResetTokenExpiry
 	TokenExpiryIn time.Duration // optional
 }
 
-// NewConfig creates a new config.
-func NewConfig(opts ...func(*Config)) *Config {
+// NewPasswordResetConfig creates a new config.
+func NewPasswordResetConfig(opts ...func(*PasswordResetConfig)) *PasswordResetConfig {
 	//nolint:exhaustruct
-	config := &Config{
+	config := &PasswordResetConfig{
 		TokenExpiryIn: DefaultResetTokenExpiry,
 		TokenLength:   DefaultResetTokenLength,
 	}
@@ -66,27 +63,17 @@ func NewConfig(opts ...func(*Config)) *Config {
 	return config
 }
 
-func (c *Config) defaults() {
+func (c *PasswordResetConfig) defaults() {
 	c.TokenExpiryIn = cmp.Or(c.TokenExpiryIn, DefaultResetTokenExpiry)
 	c.TokenLength = cmp.Or(c.TokenLength, DefaultResetTokenLength)
-	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
 	c.PasswordHasher = cmp.Or(
 		c.PasswordHasher,
-		shieldpassword.DefaultPasswordHasher,
+		DefaultPasswordHasher,
 	)
 }
 
-func (c *Config) assert() {
+func (c *PasswordResetConfig) assert() {
 	debug.Assert(c.PasswordHasher != nil, "PasswordHasher must be set")
-	debug.Assert(c.Logger != nil, "Logger must be set")
-}
-
-// WithPasswordHasher configures the password hasher.
-//
-// When setting a password hasher make sure to set it across all modules,
-// such as user registrration, password reset and password verification.
-func WithPasswordHasher(hasher shieldpassword.PasswordHasher) func(*Config) {
-	return func(cfg *Config) { cfg.PasswordHasher = hasher }
 }
 
 // PasswordResetRequestMessagePayload is the payload for the reset token message.
@@ -94,82 +81,62 @@ type PasswordResetRequestMessagePayload struct {
 	Token string
 }
 
-// Handler handles password reset requests.
+// PasswordResetHandler handles password reset requests.
 //
 // It is a general enough implementation so it can be used for different
 // communication methods.
 //
 // Check out the FormHandler for a ready to use implementation that handles
 // HTTP form requests.
-type Handler[S any] struct {
-	pool   *pgxpool.Pool
+type PasswordResetHandler[S any] struct {
+	dbtx   shield.DBTX
 	sender shieldsender.Sender
-	config *Config
+	config *PasswordResetConfig
 }
 
-func NewHandler[S any](
-	pool *pgxpool.Pool,
+func NewPasswordResetHandler[S any](
+	dbtx shield.DBTX,
 	sender shieldsender.Sender,
-	config *Config,
-) *Handler[S] {
+	config *PasswordResetConfig,
+) *PasswordResetHandler[S] {
 	if config == nil {
-		config = NewConfig()
+		config = NewPasswordResetConfig()
 	}
 
 	config.assert()
 
-	h := Handler[S]{pool, sender, config}
+	h := PasswordResetHandler[S]{dbtx, sender, config}
 	h.assert()
 
 	return &h
 }
 
 // HandlePasswordReset handles a password reset request.
-func (h *Handler[S]) HandlePasswordReset(
+//
+// SECURITY: this function doesn't check if the user is authenticated,
+// user authentication should be verified before calling this function,
+// and if the user is authenticated, prevent the user from resetting their password
+// via this API.
+func (h *PasswordResetHandler[S]) HandlePasswordReset(
 	ctx context.Context,
 	email string,
 ) error {
-	// Forbid authorized user access.
-	if shielduser.IsAuthenticated[S](ctx) {
-		return shield.ErrAuthenticatedUser
-	}
-
-	tx, err := h.pool.Begin(ctx)
+	user, err := dbsqlc.New().FindUserByEmail(ctx, h.dbtx, email)
 	if err != nil {
-		return fmt.Errorf(
-			"shieldpasswordreset: failed to begin transaction: %w",
-			err,
-		)
+		d("cannot reset password since user (%s) is not found: %v", email, err)
+
+		return nil
 	}
-
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	user, err := dbsqlc.New().FindUserByEmail(ctx, tx, email)
-	if err != nil {
-		return fmt.Errorf(
-			"shieldpasswordreset: failed to find user: %w",
-			err,
-		)
-	}
-
-	tokStr := must.Must(random.SecureHexString(h.config.TokenLength))
 
 	tok, err := dbsqlc.New().
-		UpsertPasswordResetToken(ctx, tx, dbsqlc.UpsertPasswordResetTokenParams{
-			Token:     tokStr,
+		UpsertPasswordResetToken(ctx, h.dbtx, dbsqlc.UpsertPasswordResetTokenParams{
+			Token:     must.Must(random.SecureHexString(h.config.TokenLength)),
 			UserID:    user.ID,
 			ExpiresAt: time.Now().Add(h.config.TokenExpiryIn),
 		})
 	if err != nil {
 		return fmt.Errorf(
 			"shieldpasswordreset: failed to upsert password reset token: %w",
-			err,
-		)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf(
-			"shieldpasswordreset: failed to commit transaction: %w",
 			err,
 		)
 	}
@@ -190,7 +157,7 @@ func (h *Handler[S]) HandlePasswordReset(
 	return nil
 }
 
-func (h *Handler[_]) HandlePasswordResetConfirm(
+func (h *PasswordResetHandler[_]) HandlePasswordResetConfirm(
 	ctx context.Context,
 	password, tokStr string,
 ) error {
@@ -203,17 +170,7 @@ func (h *Handler[_]) HandlePasswordResetConfirm(
 		)
 	}
 
-	tx, err := h.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf(
-			"shieldpasswordreset: failed to begin transaction: %w",
-			err,
-		)
-	}
-
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	tok, err := dbsqlc.New().FindPasswordResetToken(ctx, tx, tokStr)
+	tok, err := dbsqlc.New().FindPasswordResetToken(ctx, h.dbtx, tokStr)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldpasswordreset: failed to find password reset token: %w",
@@ -225,13 +182,23 @@ func (h *Handler[_]) HandlePasswordResetConfirm(
 		return ErrUsedPasswordResetToken
 	}
 
-	user, err := dbsqlc.New().FindUserByID(ctx, tx, tok.UserID)
+	user, err := dbsqlc.New().FindUserByID(ctx, h.dbtx, tok.UserID)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldpasswordreset: failed to find user: %w",
 			err,
 		)
 	}
+
+	tx, err := h.dbtx.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"shieldpasswordreset: failed to begin transaction: %w",
+			err,
+		)
+	}
+
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := dbsqlc.New().MarkPasswordResetTokenAsUsed(ctx, tx, tok.Token); err != nil {
 		return fmt.Errorf(
@@ -285,7 +252,7 @@ func (h *Handler[_]) HandlePasswordResetConfirm(
 	return nil
 }
 
-func (h *Handler[_]) assert() {
-	debug.Assert(h.pool != nil, "pool must be set")
+func (h *PasswordResetHandler[_]) assert() {
+	debug.Assert(h.dbtx != nil, "dbtx must be set")
 	debug.Assert(h.sender != nil, "sender must be set")
 }

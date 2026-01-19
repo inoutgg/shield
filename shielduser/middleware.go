@@ -1,7 +1,6 @@
 package shielduser
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -27,9 +26,6 @@ type Config struct {
 }
 
 func (c *Config) defaults() {
-	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
-
-	debug.Assert(c.Logger != nil, "logger must be set")
 }
 
 // Middleware returns a middleware that authenticates a user and adds

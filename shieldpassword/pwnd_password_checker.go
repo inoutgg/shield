@@ -3,8 +3,8 @@ package shieldpassword
 
 import (
 	"bytes"
-	"cmp"
 	"context"
+	"log/slog"
 
 	//nolint:gosec // SHA1 is required by pwnedpasswords.com
 	"crypto/sha1"
@@ -15,28 +15,32 @@ import (
 	"strings"
 
 	"go.inout.gg/foundations/debug"
+	"go.inout.gg/shield/internal/httputil"
 )
 
-var _ PasswordChecker = (*pwndPasswordChecker)(nil)
+var _ PasswordChecker = (*PwndPasswordChecker)(nil)
 
 // ErrPwnedPassword is returned when a password has been pwned.
 var ErrPwnedPassword = errors.New("shieldpassword: password has been pwned")
 
 type PwndPasswordCheckerConfig struct {
-	Client *http.Client
+	Client httputil.Doer
+	Logger *slog.Logger // optional
 }
 
 func (c *PwndPasswordCheckerConfig) defaults() {
-	c.Client = cmp.Or(c.Client, http.DefaultClient)
+	if c.Client == nil {
+		c.Client = http.DefaultClient
+	}
 
 	debug.Assert(c.Client != nil, "Client must be set")
 }
 
-type pwndPasswordChecker struct {
+type PwndPasswordChecker struct {
 	config *PwndPasswordCheckerConfig
 }
 
-func NewPwndPasswordChecker(opts ...func(*PwndPasswordCheckerConfig)) PasswordChecker {
+func NewPwndPasswordChecker(opts ...func(*PwndPasswordCheckerConfig)) *PwndPasswordChecker {
 	var config PwndPasswordCheckerConfig
 	for _, opt := range opts {
 		opt(&config)
@@ -44,10 +48,10 @@ func NewPwndPasswordChecker(opts ...func(*PwndPasswordCheckerConfig)) PasswordCh
 
 	config.defaults()
 
-	return &pwndPasswordChecker{config: &config}
+	return &PwndPasswordChecker{config: &config}
 }
 
-func (c *pwndPasswordChecker) Check(ctx context.Context, password string) error {
+func (c *PwndPasswordChecker) Check(ctx context.Context, password string) error {
 	//nolint:gosec // SHA1 is required by pwnedpasswords.com
 	hash := sha1.New().Sum([]byte(password))
 	prefix := fmt.Sprintf("%08x", hash[:5])

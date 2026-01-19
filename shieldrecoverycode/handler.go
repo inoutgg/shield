@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/debug"
 
 	"go.inout.gg/shield"
@@ -80,7 +79,6 @@ func (c *Config) defaults() {
 		c.PasswordHasher,
 		shieldpassword.DefaultPasswordHasher,
 	)
-	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
 	c.RecoveryCodeTotalCount = cmp.Or(
 		c.RecoveryCodeTotalCount,
 		DefaultRecoveryCodeTotalCount,
@@ -103,15 +101,15 @@ func (c *Config) assert() {
 
 type Handler struct {
 	config *Config
-	pool   *pgxpool.Pool
+	dbtx   shield.DBTX
 }
 
-func New(pool *pgxpool.Pool, config *Config) *Handler {
+func New(dbtx shield.DBTX, config *Config) *Handler {
 	if config == nil {
 		config = NewConfig()
 	}
 
-	h := Handler{config, pool}
+	h := Handler{config, dbtx}
 	h.assert()
 
 	return &h
@@ -156,7 +154,7 @@ func (h *Handler) CreateRecoveryCodes(
 		return err
 	}
 
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldrecoverycode: failed to begin transaction: %w",
@@ -193,7 +191,7 @@ func (h *Handler) RecreateRecoveryCodes(
 		return err
 	}
 
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldrecoverycode: failed to begin transaction: %w",
@@ -282,5 +280,5 @@ func (h *Handler) CreateRecoveryCodesInTx(
 
 func (h *Handler) assert() {
 	h.config.assert()
-	debug.Assert(h.pool != nil, "expected pool to be defined")
+	debug.Assert(h.dbtx != nil, "expected dbtx to be defined")
 }

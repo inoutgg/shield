@@ -5,21 +5,21 @@ import (
 	"fmt"
 
 	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 )
 
 type Handler struct {
 	wa   *webauthn.WebAuthn
-	pool *pgxpool.Pool
+	dbtx shield.DBTX
 }
 
 type Config struct {
 	WebauthnConfig *webauthn.Config
 }
 
-func NewHandler(pool *pgxpool.Pool, config *Config) (*Handler, error) {
+func NewHandler(dbtx shield.DBTX, config *Config) (*Handler, error) {
 	wa, err := webauthn.New(config.WebauthnConfig)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -30,7 +30,7 @@ func NewHandler(pool *pgxpool.Pool, config *Config) (*Handler, error) {
 
 	return &Handler{
 		wa,
-		pool,
+		dbtx,
 	}, nil
 }
 
@@ -39,7 +39,7 @@ func (h *Handler) HandleStartUserLogin(
 	email string,
 ) error {
 	row, err := dbsqlc.New().
-		FindUserWithPasskeyCredentialByEmail(ctx, h.pool, email)
+		FindUserWithPasskeyCredentialByEmail(ctx, h.dbtx, email)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldpasskey: failed to retrieve a user: %w",

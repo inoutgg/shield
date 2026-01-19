@@ -15,13 +15,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/dbsql"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/http/httpcookie"
 
 	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
+	"go.inout.gg/shield/internal/logutil"
 	"go.inout.gg/shield/shieldmfa"
 	"go.inout.gg/shield/shielduser"
 )
@@ -38,7 +38,7 @@ const (
 
 // TODO: implement session caching.
 type sessionStrategy[U, S any] struct {
-	pool   *pgxpool.Pool
+	dbtx   shield.DBTX
 	config Config[U, S]
 }
 
@@ -81,11 +81,9 @@ type Config[U, S any] struct {
 }
 
 func (c *Config[_, _]) defaults() {
-	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
 	c.CookieName = cmp.Or(c.CookieName, DefaultCookieName)
 	c.ExpiresIn = cmp.Or(c.ExpiresIn, DefaultExpiresIn)
 
-	debug.Assert(c.Logger != nil, "c.Logger is required")
 	debug.Assert(c.CookieName != "", "c.CookieName is required")
 	debug.Assert(
 		c.ExpiresIn > 0,
@@ -103,7 +101,7 @@ func WithHooker[U, S any](h Hooker[U, S]) func(*Config[U, S]) {
 // The session authenticator uses a DB to store sessions and a cookie to
 // store the session ID.
 func New[U, S any](
-	pool *pgxpool.Pool,
+	dbtx shield.DBTX,
 	opts ...func(*Config[U, S]),
 ) shielduser.Authenticator[U, S] {
 	var config Config[U, S]
@@ -113,10 +111,10 @@ func New[U, S any](
 
 	config.defaults()
 
-	debug.Assert(pool != nil, "pool is required")
+	debug.Assert(dbtx != nil, "dbtx is required")
 
 	return &sessionStrategy[U, S]{
-		pool:   pool,
+		dbtx:   dbtx,
 		config: config,
 	}
 }
@@ -131,7 +129,7 @@ func (s *sessionStrategy[U, S]) Issue(
 
 	var sess shielduser.Session[S]
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.dbtx.Begin(ctx)
 	if err != nil {
 		return sess, fmt.Errorf(
 			"shieldserversession: failed to begin transaction: %w",
@@ -231,7 +229,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 		return sess, shield.ErrUnauthenticatedUser
 	}
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.dbtx.Begin(ctx)
 	if err != nil {
 		return sess, fmt.Errorf(
 			"shieldserversession: failed to begin transaction: %w",
@@ -244,8 +242,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 	dbSess, err := dbsqlc.New().FindActiveSessionByID(ctx, tx, sessionID)
 	if err != nil {
 		if dbsql.IsNotFoundError(err) {
-			s.config.Logger.ErrorContext(
-				ctx,
+			logutil.Log(ctx, s.config.Logger, slog.LevelError,
 				"No sessions found with the given ID",
 				slog.Int64("session_id", sessionID),
 				slog.Any("error", err),

@@ -4,22 +4,22 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/http/httpcookie"
 	"go.inout.gg/foundations/http/httperror"
 
+	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/shielduser"
 )
 
 // LogoutHandler is a handler that logs out the user and deletes the session.
 type LogoutHandler[U, S any] struct {
-	pool   *pgxpool.Pool
+	dbtx   shield.DBTX
 	config Config[U, S]
 }
 
 func NewLogoutHandler[U, S any](
-	pool *pgxpool.Pool,
+	dbtx shield.DBTX,
 	opts ...func(*Config[U, S]),
 ) *LogoutHandler[U, S] {
 	var config Config[U, S]
@@ -29,7 +29,7 @@ func NewLogoutHandler[U, S any](
 
 	config.defaults()
 
-	return &LogoutHandler[U, S]{pool, config}
+	return &LogoutHandler[U, S]{dbtx, config}
 }
 
 // Logout logs out the user and deletes the session.
@@ -44,7 +44,7 @@ func (h *LogoutHandler[U, S]) Logout(
 		return httperror.FromError(err, http.StatusUnauthorized)
 	}
 
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldserversession: failed to begin transaction: %w",

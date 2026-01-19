@@ -55,6 +55,7 @@ func Middleware[S any](opts ...func(*Config)) httpmiddleware.MiddlewareFunc {
 				return
 			}
 
+			// If no session is found, skip tracking it.
 			if sess.Method == "" {
 				next.ServeHTTP(w, r)
 

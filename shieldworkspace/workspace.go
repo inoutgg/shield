@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/dbsql"
 
 	"go.inout.gg/shield"
@@ -30,7 +29,7 @@ type Workspace struct {
 // It also handles workspace invitations and member management.
 type Handler struct {
 	sender shieldsender.Sender
-	pool   *pgxpool.Pool
+	dbtx   shield.DBTX
 	config *Config
 }
 
@@ -60,9 +59,6 @@ func (c *Config) defaults() {
 		c.InvitationExpiryIn,
 		DefaultInvitationExpiryIn,
 	)
-	if c.Logger == nil {
-		c.Logger = shield.DefaultLogger
-	}
 }
 
 type WorkspaceInviteMessagePayload struct {
@@ -78,7 +74,7 @@ func (h *Handler) InviteUserToWorkspace(
 	teamID int64,
 	memberEmail string,
 ) error {
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldworkspace: failed to begin transaction: %w",
@@ -150,7 +146,7 @@ func (h *Handler) CreateWorkspace(
 	name string,
 	ownerID int64,
 ) (int64, int64, error) {
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf(
 			"shieldworkspace: failed to begin transaction: %w",

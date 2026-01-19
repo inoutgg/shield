@@ -8,7 +8,6 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.inout.gg/foundations/dbsql"
 	"go.inout.gg/foundations/debug"
 	"go.inout.gg/foundations/pointer"
@@ -26,22 +25,20 @@ var (
 	ErrPasswordIncorrect = errors.New("shieldpassword: password incorrect")
 )
 
-// Config is the configuration for the password handler.
-type Config[U any] struct {
-	Logger          *slog.Logger
-	PasswordHasher  PasswordHasher
-	PasswordChecker PasswordChecker
-	Hooker          Hooker[U]
+// PasswordConfig is the configuration for the password handler.
+type PasswordConfig[U any] struct {
+	Logger          *slog.Logger    // optional
+	PasswordHasher  PasswordHasher  // optional
+	PasswordChecker PasswordChecker // optional
+	Hooker          Hooker[U]       // optional
 }
 
-func (c *Config[U]) defaults() {
-	c.Logger = cmp.Or(c.Logger, shield.DefaultLogger)
+func (c *PasswordConfig[U]) defaults() {
 	c.PasswordHasher = cmp.Or(c.PasswordHasher, DefaultPasswordHasher)
 }
 
-func (c *Config[U]) assert() {
+func (c *PasswordConfig[U]) assert() {
 	debug.Assert(c.PasswordHasher != nil, "PasswordHasher must be set")
-	debug.Assert(c.Logger != nil, "Logger must be set")
 }
 
 // Hooker allows to hook into the user registration and logging in sessions
@@ -58,12 +55,12 @@ type Hooker[U any] interface {
 	OnUserLogin(context.Context, int64, pgx.Tx) (U, error)
 }
 
-// NewConfig creates a new config.
+// NewPasswordHandlerConfig creates a new config.
 //
 // If no password hasher is configured, the DefaultPasswordHasher will be used.
-func NewConfig[U any](opts ...func(*Config[U])) *Config[U] {
+func NewPasswordHandlerConfig[U any](opts ...func(*PasswordConfig[U])) *PasswordConfig[U] {
 	//nolint:exhaustruct
-	config := Config[U]{}
+	config := PasswordConfig[U]{}
 	for _, opt := range opts {
 		opt(&config)
 	}
@@ -78,42 +75,42 @@ func NewConfig[U any](opts ...func(*Config[U])) *Config[U] {
 //
 // When setting a password hasher make sure to set it across all modules,
 // i.e., user registration, password reset and password verification.
-func WithPasswordHasher[U any](hasher PasswordHasher) func(*Config[U]) {
-	return func(cfg *Config[U]) { cfg.PasswordHasher = hasher }
+func WithPasswordHasher[U any](hasher PasswordHasher) func(*PasswordConfig[U]) {
+	return func(cfg *PasswordConfig[U]) { cfg.PasswordHasher = hasher }
 }
 
-func WithHooker[U any](hooker Hooker[U]) func(*Config[U]) {
-	return func(cfg *Config[U]) { cfg.Hooker = hooker }
+func WithHooker[U any](hooker Hooker[U]) func(*PasswordConfig[U]) {
+	return func(cfg *PasswordConfig[U]) { cfg.Hooker = hooker }
 }
 
-type Handler[U, S any] struct {
-	pool          *pgxpool.Pool
-	config        *Config[U]
+type PasswordHandler[U, S any] struct {
+	dbtx          shield.DBTX
+	config        *PasswordConfig[U]
 	authenticator shielduser.Authenticator[U, S]
 	sender        shieldsender.Sender
 }
 
-// NewHandler creates a new password Handler.
-func NewHandler[U, S any](
-	pool *pgxpool.Pool,
+// NewPasswordHandler creates a new password Handler.
+func NewPasswordHandler[U, S any](
+	dbtx shield.DBTX,
 	authenticator shielduser.Authenticator[U, S],
 	sender shieldsender.Sender,
-	config *Config[U],
-) *Handler[U, S] {
+	config *PasswordConfig[U],
+) *PasswordHandler[U, S] {
 	if config == nil {
-		config = NewConfig[U]()
+		config = NewPasswordHandlerConfig[U]()
 	}
 
 	config.assert()
 
-	h := Handler[U, S]{
-		pool:          pool,
+	h := PasswordHandler[U, S]{
+		dbtx:          dbtx,
 		config:        config,
 		authenticator: authenticator,
 		sender:        sender,
 	}
 
-	debug.Assert(h.pool != nil, "Logger must be set")
+	debug.Assert(h.dbtx != nil, "Logger must be set")
 
 	return &h
 }
@@ -124,7 +121,7 @@ func NewHandler[U, S any](
 // The user ID is expected to be provide via a session assigned to a passed ctx context.
 //
 // If no password was previously set for a user a new credential will be created.
-func (h *Handler[_, S]) HandleChangeUserPassword(
+func (h *PasswordHandler[_, S]) HandleChangeUserPassword(
 	ctx context.Context,
 	oldPassword, newPassword string,
 ) error {
@@ -146,7 +143,7 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 		)
 	}
 
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shieldpassword: failed to begin transaction: %w",
@@ -221,16 +218,11 @@ func (h *Handler[_, S]) HandleChangeUserPassword(
 	return nil
 }
 
-func (h *Handler[U, S]) HandleUserRegistration(
+func (h *PasswordHandler[U, S]) HandleUserRegistration(
 	ctx context.Context,
 	email, password string,
 ) (shielduser.User[U], error) {
 	var user shielduser.User[U]
-
-	// Forbid authorized user access.
-	if shielduser.IsAuthenticated[S](ctx) {
-		return user, shield.ErrAuthenticatedUser
-	}
 
 	// Make sure that the password hashing is performed outside of the transaction
 	// as it is an expensive operation.
@@ -242,7 +234,7 @@ func (h *Handler[U, S]) HandleUserRegistration(
 		)
 	}
 
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return user, fmt.Errorf(
 			"shieldpassword: failed to begin transaction: %w",
@@ -289,7 +281,7 @@ func (h *Handler[U, S]) HandleUserRegistration(
 	return user, nil
 }
 
-func (h *Handler[U, _]) handleUserRegistrationTx(
+func (h *PasswordHandler[U, _]) handleUserRegistrationTx(
 	ctx context.Context,
 	email, passwordHash string,
 	tx pgx.Tx,
@@ -322,18 +314,13 @@ func (h *Handler[U, _]) handleUserRegistrationTx(
 	return uid, nil
 }
 
-func (h *Handler[U, S]) HandleUserLogin(
+func (h *PasswordHandler[U, S]) HandleUserLogin(
 	ctx context.Context,
 	email, password string,
 ) (shielduser.User[U], error) {
 	var user shielduser.User[U]
 
-	// Forbid authorized user access.
-	if shielduser.IsAuthenticated[S](ctx) {
-		return user, shield.ErrAuthenticatedUser
-	}
-
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return user, fmt.Errorf(
 			"shieldpassword: failed to begin transaction: %w",

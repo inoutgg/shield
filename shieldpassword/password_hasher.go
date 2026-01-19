@@ -14,15 +14,26 @@ const (
 	BcryptDefaultCost = bcrypt.DefaultCost
 )
 
+// DefaultPasswordHasher is the default password hashing algorithm used across.
+//
+//nolint:gochecknoglobals
+var DefaultPasswordHasher = NewBcryptPasswordHasher(BcryptDefaultCost)
+
+// PasswordHasher is a hashing algorithm to hash password securely.
+type PasswordHasher interface {
+	Hash(password string) (string, error)
+	Verify(hashedPassword string, password string) (bool, error)
+}
+
 type bcryptPasswordHasher struct {
 	cost int
 }
 
 // NewBcryptPasswordHasher creates a password hasher using the bcrypt algorithm.
 //
-// Please note that bcrypt has a maximum input length of 72 bytes. For passwords
-// requiring more than 72 bytes of data, consider using an alternative algorithm
-// such as Argon2.
+// Security: Please note that bcrypt has a maximum input length of 72 bytes.
+// For passwords requiring more than 72 bytes of data, consider using an alternative
+// algorithm such as Argon2.
 func NewBcryptPasswordHasher(cost int) PasswordHasher {
 	return &bcryptPasswordHasher{cost}
 }

@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
+	"go.inout.gg/shield"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/shieldsender"
 )
@@ -13,16 +12,16 @@ import (
 // Handler handles user management operations, such as changing email addresses,
 // etc.
 type Handler[S any] struct {
-	pool   *pgxpool.Pool
+	dbtx   shield.DBTX
 	sender shieldsender.Sender
 }
 
 func NewHandler[S any](
-	pool *pgxpool.Pool,
+	dbtx shield.DBTX,
 	sender shieldsender.Sender,
 ) *Handler[S] {
 	return &Handler[S]{
-		pool:   pool,
+		dbtx:   dbtx,
 		sender: sender,
 	}
 }
@@ -39,7 +38,7 @@ func (h *Handler[S]) HandleChangeEmail(ctx context.Context, email string) error 
 		)
 	}
 
-	tx, err := h.pool.Begin(ctx)
+	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"shielduser: failed to begin transaction: %w",
