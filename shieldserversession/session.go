@@ -26,7 +26,10 @@ import (
 	"go.inout.gg/shield/shielduser"
 )
 
-var _ shielduser.Authenticator[any, any] = (*sessionStrategy[any, any])(nil)
+var (
+	_ shielduser.Authenticator[any, any] = (*sessionStrategy[any, any])(nil)
+	_ shielduser.Impersonator[any, any]  = (*sessionStrategy[any, any])(nil)
+)
 
 //nolint:gochecknoglobals
 var d = debug.Debuglog("shieldserversession")
@@ -76,8 +79,7 @@ type Hooker[U, S any] interface {
 type Config[U, S any] struct {
 	Logger *slog.Logger
 
-	Hooker                 Hooker[U, S]
-	ImpersonatedByResolver func(*http.Request, shielduser.User[U]) *int64
+	Hooker Hooker[U, S]
 
 	CookieName             string        // optional (default: "usid")
 	ExpiresIn              time.Duration // optional (default: 12h)
@@ -112,12 +114,7 @@ func WithHooker[U, S any](h Hooker[U, S]) func(*Config[U, S]) {
 	return func(c *Config[U, S]) { c.Hooker = h }
 }
 
-func WithImpersonatedByResolver[U, S any](
-	resolver func(*http.Request, shielduser.User[U]) *int64,
-) func(*Config[U, S]) {
-	return func(c *Config[U, S]) { c.ImpersonatedByResolver = resolver }
-}
-
+// WithImpersonationExpiresIn sets the impersonation expires in duration for a given config.
 func WithImpersonationExpiresIn[U, S any](d time.Duration) func(*Config[U, S]) {
 	return func(c *Config[U, S]) { c.ImpersonationExpiresIn = d }
 }
@@ -152,33 +149,11 @@ func (s *sessionStrategy[U, S]) Issue(
 ) (shielduser.Session[S], error) {
 	ctx := r.Context()
 
-	var impersonatedBy *int64
-	if s.config.ImpersonatedByResolver != nil {
-		impersonatedBy = s.config.ImpersonatedByResolver(r, user)
-	}
-
-	expiresIn := s.config.ExpiresIn
-	if impersonatedBy != nil {
-		expiresIn = s.config.ImpersonationExpiresIn
-	}
-
-	expiresAt := time.Now().Add(expiresIn)
-
 	var sess shielduser.Session[S]
-
-	tx, err := s.dbtx.Begin(ctx)
-	if err != nil {
-		return sess, fmt.Errorf(
-			"shieldserversession: failed to begin transaction: %w",
-			err,
-		)
-	}
-
-	defer func() { _ = tx.Rollback(ctx) }()
 
 	isMFARequired := true
 
-	mfas, err := shieldmfa.UserMFA(ctx, tx, user.ID)
+	mfas, err := shieldmfa.UserMFA(ctx, s.dbtx, user.ID)
 	if err != nil {
 		if errors.Is(err, shieldmfa.ErrNoMFAMethods) {
 			isMFARequired = false
@@ -190,13 +165,136 @@ func (s *sessionStrategy[U, S]) Issue(
 		}
 	}
 
-	sessionID, err := dbsqlc.New().
-		CreateUserSession(ctx, tx, dbsqlc.CreateUserSessionParams{
+	expiresAt := time.Now().Add(s.config.ExpiresIn)
+
+	tx, err := s.dbtx.Begin(ctx)
+	if err != nil {
+		return sess, fmt.Errorf(
+			"shieldserversession: failed to begin transaction: %w",
+			err,
+		)
+	}
+
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	sess, err = s.issueSessionTx(ctx, user, expiresAt, isMFARequired, nil, tx)
+	if err != nil {
+		return sess, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return sess, fmt.Errorf(
+			"shieldserversession: failed to commit transaction: %w",
+			err,
+		)
+	}
+
+	httpcookie.Set(
+		w,
+		s.config.CookieName,
+		strconv.FormatInt(sess.ID, 10),
+		httpcookie.WithHTTPOnly,
+		httpcookie.WithExpiresIn(s.config.ExpiresIn),
+	)
+
+	if isMFARequired {
+		return sess, shieldmfa.NewUserMFARequiredError(user.ID, mfas)
+	}
+
+	return sess, nil
+}
+
+func (s *sessionStrategy[U, S]) Impersonate(
+	w http.ResponseWriter,
+	r *http.Request,
+	actorSession *shielduser.Session[S],
+	targetUser *shielduser.User[U],
+) (shielduser.Session[S], error) {
+	ctx := r.Context()
+
+	var sess shielduser.Session[S]
+
+	if actorSession == nil {
+		return sess, fmt.Errorf("shieldserversession: actor session is required")
+	}
+
+	if targetUser == nil {
+		return sess, fmt.Errorf("shieldserversession: target user is required")
+	}
+
+	if actorSession.IsMFARequired {
+		return sess, shield.ErrMFARequired
+	}
+
+	if actorSession.ImpersonatedBy != nil {
+		return sess, fmt.Errorf(
+			"shieldserversession: nested impersonation is not supported",
+		)
+	}
+
+	tx, err := s.dbtx.Begin(ctx)
+	if err != nil {
+		return sess, fmt.Errorf(
+			"shieldserversession: failed to begin transaction: %w",
+			err,
+		)
+	}
+
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	expiresAt := time.Now().Add(s.config.ImpersonationExpiresIn)
+	impersonatedBy := actorSession.UserID
+
+	sess, err = s.issueSessionTx(
+		ctx,
+		*targetUser,
+		expiresAt,
+		false,
+		&impersonatedBy,
+		tx,
+	)
+	if err != nil {
+		return sess, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return sess, fmt.Errorf(
+			"shieldserversession: failed to commit transaction: %w",
+			err,
+		)
+	}
+
+	httpcookie.Set(
+		w,
+		s.config.CookieName,
+		strconv.FormatInt(sess.ID, 10),
+		httpcookie.WithHTTPOnly,
+		httpcookie.WithExpiresIn(s.config.ImpersonationExpiresIn),
+	)
+
+	return sess, nil
+}
+
+func (s *sessionStrategy[U, S]) issueSessionTx(
+	ctx context.Context,
+	user shielduser.User[U],
+	expiresAt time.Time,
+	isMFARequired bool,
+	impersonatedBy *int64,
+	tx pgx.Tx,
+) (shielduser.Session[S], error) {
+	var sess shielduser.Session[S]
+
+	sessionID, err := dbsqlc.New().CreateUserSession(
+		ctx,
+		tx,
+		dbsqlc.CreateUserSessionParams{
 			UserID:         user.ID,
 			ExpiresAt:      expiresAt,
 			IsMfaRequired:  isMFARequired,
 			ImpersonatedBy: impersonatedBy,
-		})
+		},
+	)
 	if err != nil {
 		return sess, fmt.Errorf(
 			"shieldserversession: failed to create session: %w",
@@ -225,25 +323,6 @@ func (s *sessionStrategy[U, S]) Issue(
 				err,
 			)
 		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return sess, fmt.Errorf(
-			"shieldserversession: failed to commit transaction: %w",
-			err,
-		)
-	}
-
-	httpcookie.Set(
-		w,
-		s.config.CookieName,
-		strconv.FormatInt(sessionID, 10),
-		httpcookie.WithHTTPOnly,
-		httpcookie.WithExpiresIn(expiresIn),
-	)
-
-	if isMFARequired {
-		return sess, shieldmfa.NewUserMFARequiredError(user.ID, mfas)
 	}
 
 	return sess, nil

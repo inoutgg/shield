@@ -12,11 +12,11 @@ import (
 type Session[T any] struct {
 	ExpiresAt      time.Time
 	T              *T
-	Method         string
-	UserID         int64
+	AuthMethod     string
 	ID             int64
-	IsMFARequired  bool
+	UserID         int64
 	ImpersonatedBy *int64
+	IsMFARequired  bool
 }
 
 // Authenticator authenticates the user.
@@ -29,11 +29,7 @@ type Authenticator[U, S any] interface {
 	// not fully authenticated, i.e., when user is required MFA authentication.
 	//
 	// If MFA is required, the session is returned along with a shield.ErrMFARequired error.
-	Issue(
-		http.ResponseWriter,
-		*http.Request,
-		User[U],
-	) (Session[S], error)
+	Issue(http.ResponseWriter, *http.Request, User[U]) (Session[S], error)
 
 	// Authenticate authenticates the user.
 	//

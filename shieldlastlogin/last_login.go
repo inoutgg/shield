@@ -80,7 +80,7 @@ func Middleware[S any](opts ...func(*Config)) httpmiddleware.MiddlewareFunc {
 			}
 
 			// If no session is found, skip tracking it.
-			if sess.Method == "" {
+			if sess.AuthMethod == "" {
 				next.ServeHTTP(w, r)
 
 				return
@@ -89,7 +89,7 @@ func Middleware[S any](opts ...func(*Config)) httpmiddleware.MiddlewareFunc {
 			httpcookie.Set(
 				w,
 				cfg.CookieName,
-				cfg.Resolver(sess.Method),
+				cfg.Resolver(sess.AuthMethod),
 				httpcookie.WithExpiresIn(cfg.CookieExpiry))
 
 			next.ServeHTTP(w, r)
