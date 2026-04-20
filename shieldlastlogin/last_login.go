@@ -19,9 +19,21 @@ var (
 )
 
 type Config struct {
-	Resolver     func(string) string
-	CookieName   string
-	CookieExpiry time.Duration
+	// Resolver is used to resolve the last login method from the user's session
+	// to the internal method.
+	//
+	// Defaults to DefaultResolver, which is an identity function.
+	Resolver func(string) string // optional.
+
+	// CookieName is the name of the cookie used to store the last login method.
+	//
+	// Defaults to DefaultCookieName.
+	CookieName string // optional
+
+	// CookieExpiry is the duration for which the cookie should be valid.
+	//
+	// Defaults to DefaultCookieExpiry.
+	CookieExpiry time.Duration // optional
 }
 
 func (c *Config) defaults() {
@@ -31,6 +43,18 @@ func (c *Config) defaults() {
 
 	c.CookieName = cmp.Or(c.CookieName, DefaultCookieName)
 	c.CookieExpiry = cmp.Or(c.CookieExpiry, DefaultCookieExpiry)
+}
+
+// FromRequest retrieves the last login method from the request cookie.
+//
+// It returns an empty string if no last login method is set.
+func FromRequest(r *http.Request, cookieName ...string) string {
+	name := DefaultCookieName
+	if len(cookieName) > 0 {
+		name = cookieName[0]
+	}
+
+	return httpcookie.Get(r, name)
 }
 
 // Middleware tracks the last login method a user used. It helps to

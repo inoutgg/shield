@@ -32,8 +32,10 @@ var _ shielduser.Authenticator[any, any] = (*sessionStrategy[any, any])(nil)
 var d = debug.Debuglog("shieldserversession")
 
 const (
-	DefaultCookieName = "usid"
-	DefaultExpiresIn  = time.Hour * 12
+	DefaultCookieName             = "usid"
+	DefaultExpiresIn              = time.Hour * 12
+	DefaultImpersonationExpiresIn = time.Minute * 15
+	MaxImpersonationExpiresIn     = time.Minute * 30
 )
 
 // TODO: implement session caching.
@@ -74,26 +76,50 @@ type Hooker[U, S any] interface {
 type Config[U, S any] struct {
 	Logger *slog.Logger
 
-	Hooker Hooker[U, S]
+	Hooker                 Hooker[U, S]
+	ImpersonatedByResolver func(*http.Request, shielduser.User[U]) *int64
 
-	CookieName string        // optional (default: "usid")
-	ExpiresIn  time.Duration // optional (default: 12h)
+	CookieName             string        // optional (default: "usid")
+	ExpiresIn              time.Duration // optional (default: 12h)
+	ImpersonationExpiresIn time.Duration // optional (default: 15m)
 }
 
 func (c *Config[_, _]) defaults() {
 	c.CookieName = cmp.Or(c.CookieName, DefaultCookieName)
 	c.ExpiresIn = cmp.Or(c.ExpiresIn, DefaultExpiresIn)
+	c.ImpersonationExpiresIn = cmp.Or(
+		c.ImpersonationExpiresIn,
+		DefaultImpersonationExpiresIn,
+	)
 
 	debug.Assert(c.CookieName != "", "c.CookieName is required")
 	debug.Assert(
 		c.ExpiresIn > 0,
 		"config.ExpiresIn must be positive time.Duration",
 	)
+	debug.Assert(
+		c.ImpersonationExpiresIn > 0,
+		"config.ImpersonationExpiresIn must be positive time.Duration",
+	)
+	debug.Assert(
+		c.ImpersonationExpiresIn <= MaxImpersonationExpiresIn,
+		"config.ImpersonationExpiresIn must be at most 30m",
+	)
 }
 
 // WithHooker sets a session hooker for a given config.
 func WithHooker[U, S any](h Hooker[U, S]) func(*Config[U, S]) {
 	return func(c *Config[U, S]) { c.Hooker = h }
+}
+
+func WithImpersonatedByResolver[U, S any](
+	resolver func(*http.Request, shielduser.User[U]) *int64,
+) func(*Config[U, S]) {
+	return func(c *Config[U, S]) { c.ImpersonatedByResolver = resolver }
+}
+
+func WithImpersonationExpiresIn[U, S any](d time.Duration) func(*Config[U, S]) {
+	return func(c *Config[U, S]) { c.ImpersonationExpiresIn = d }
 }
 
 // New creates a new session authenticator.
@@ -125,7 +151,18 @@ func (s *sessionStrategy[U, S]) Issue(
 	user shielduser.User[U],
 ) (shielduser.Session[S], error) {
 	ctx := r.Context()
-	expiresAt := time.Now().Add(s.config.ExpiresIn)
+
+	var impersonatedBy *int64
+	if s.config.ImpersonatedByResolver != nil {
+		impersonatedBy = s.config.ImpersonatedByResolver(r, user)
+	}
+
+	expiresIn := s.config.ExpiresIn
+	if impersonatedBy != nil {
+		expiresIn = s.config.ImpersonationExpiresIn
+	}
+
+	expiresAt := time.Now().Add(expiresIn)
 
 	var sess shielduser.Session[S]
 
@@ -155,9 +192,10 @@ func (s *sessionStrategy[U, S]) Issue(
 
 	sessionID, err := dbsqlc.New().
 		CreateUserSession(ctx, tx, dbsqlc.CreateUserSessionParams{
-			UserID:        user.ID,
-			ExpiresAt:     expiresAt,
-			IsMfaRequired: isMFARequired,
+			UserID:         user.ID,
+			ExpiresAt:      expiresAt,
+			IsMfaRequired:  isMFARequired,
+			ImpersonatedBy: impersonatedBy,
 		})
 	if err != nil {
 		return sess, fmt.Errorf(
@@ -177,6 +215,7 @@ func (s *sessionStrategy[U, S]) Issue(
 	sess.ExpiresAt = expiresAt
 	sess.UserID = user.ID
 	sess.IsMFARequired = isMFARequired
+	sess.ImpersonatedBy = impersonatedBy
 
 	if s.config.Hooker != nil {
 		sess, err = s.config.Hooker.OnSessionIssue(ctx, user, sess, tx)
@@ -200,7 +239,7 @@ func (s *sessionStrategy[U, S]) Issue(
 		s.config.CookieName,
 		strconv.FormatInt(sessionID, 10),
 		httpcookie.WithHTTPOnly,
-		httpcookie.WithExpiresIn(s.config.ExpiresIn),
+		httpcookie.WithExpiresIn(expiresIn),
 	)
 
 	if isMFARequired {
@@ -266,6 +305,7 @@ func (s *sessionStrategy[U, S]) Authenticate(
 	sess.ID = dbSess.ID
 	sess.ExpiresAt = dbSess.ExpiresAt
 	sess.UserID = dbSess.UserID
+	sess.ImpersonatedBy = dbSess.ImpersonatedBy
 
 	if s.config.Hooker != nil {
 		sess, err = s.config.Hooker.OnSessionAuthenticate(ctx, sess, tx)

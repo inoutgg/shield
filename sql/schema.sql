@@ -108,11 +108,13 @@ CREATE UNLOGGED TABLE IF NOT EXISTS shield_user_sessions (
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
   user_id BIGINT NOT NULL,
   evicted_by BIGINT NULL,
+  impersonated_by BIGINT NULL,
   is_mfa_required BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (user_id, id),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE,
   FOREIGN KEY (evicted_by) REFERENCES shield_users (id),
+  FOREIGN KEY (impersonated_by) REFERENCES shield_users (id),
   CHECK (expires_at > CURRENT_TIMESTAMP),
   CHECK (expires_at > created_at)
 );

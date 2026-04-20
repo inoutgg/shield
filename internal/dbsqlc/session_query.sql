@@ -1,6 +1,11 @@
 -- name: CreateUserSession :one
-INSERT INTO shield_user_sessions (user_id, expires_at, is_mfa_required)
-VALUES (@user_id, @expires_at, @is_mfa_required)
+INSERT INTO shield_user_sessions (
+  user_id,
+  expires_at,
+  is_mfa_required,
+  impersonated_by
+)
+VALUES (@user_id, @expires_at, @is_mfa_required, @impersonated_by)
 RETURNING id;
 
 -- name: FindActiveSessionByID :one

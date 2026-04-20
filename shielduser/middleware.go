@@ -87,24 +87,7 @@ func Middleware[U, S any](
 //
 // Make sure to use the Middleware before adding this one.
 func RequireAuthenticatedUserMiddleware[S any](redirectURL string) httpmiddleware.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !IsAuthenticated[S](r.Context()) {
-				d("user is not authenticated")
-
-				http.Redirect(
-					w,
-					r,
-					redirectURL,
-					http.StatusTemporaryRedirect,
-				)
-
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
+	return redirectMiddleware[S](redirectURL, true)
 }
 
 // PreventAuthenticatedUserMiddleware redirects a user to the
@@ -112,25 +95,35 @@ func RequireAuthenticatedUserMiddleware[S any](redirectURL string) httpmiddlewar
 //
 // Make sure to use the Middleware before adding this middleware.
 func PreventAuthenticatedUserMiddleware[S any](redirectURL string) httpmiddleware.MiddlewareFunc {
+	return redirectMiddleware[S](redirectURL, false)
+}
+
+// redirectMiddleware is the shared implementation for RequireAuthenticatedUserMiddleware
+// and PreventAuthenticatedUserMiddleware.
+//
+// When requireAuth is true, it redirects unauthenticated users.
+// When requireAuth is false, it redirects authenticated users.
+func redirectMiddleware[S any](redirectURL string, requireAuth bool) httpmiddleware.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				if IsAuthenticated[S](r.Context()) {
-					d("redirecting authenticated user")
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authenticated := IsAuthenticated[S](r.Context())
 
-					http.Redirect(
-						w,
-						r,
-						redirectURL,
-						http.StatusTemporaryRedirect,
-					)
+			if requireAuth && !authenticated {
+				d("user is not authenticated")
+				http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 
-					return
-				}
+				return
+			}
 
-				next.ServeHTTP(w, r)
-			},
-		)
+			if !requireAuth && authenticated {
+				d("redirecting authenticated user")
+				http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 

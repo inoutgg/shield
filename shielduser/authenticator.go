@@ -10,15 +10,18 @@ import (
 
 // Session is a session that is issued when a user is authenticated.
 type Session[T any] struct {
-	ExpiresAt     time.Time
-	T             *T
-	Method        string
-	UserID        int64
-	ID            int64
-	IsMFARequired bool
+	ExpiresAt      time.Time
+	T              *T
+	Method         string
+	UserID         int64
+	ID             int64
+	IsMFARequired  bool
+	ImpersonatedBy *int64
 }
 
 // Authenticator authenticates the user.
+//
+//go:generate mockgen -destination=../internal/mocks/authenticator_mock.go -package=mocks -typed . Authenticator
 type Authenticator[U, S any] interface {
 	// Issue creates a new session for the given user.
 	//

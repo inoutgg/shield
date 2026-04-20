@@ -11,7 +11,7 @@ import (
 )
 
 const allActiveSessions = `-- name: AllActiveSessions :many
-SELECT id, created_at, updated_at, expires_at, user_id, evicted_by, is_mfa_required
+SELECT id, created_at, updated_at, expires_at, user_id, evicted_by, impersonated_by, is_mfa_required
 FROM shield_user_sessions
 WHERE user_id = $1 AND expires_at > NOW()
 `
@@ -32,6 +32,7 @@ func (q *Queries) AllActiveSessions(ctx context.Context, db DBTX, userID int64) 
 			&i.ExpiresAt,
 			&i.UserID,
 			&i.EvictedBy,
+			&i.ImpersonatedBy,
 			&i.IsMfaRequired,
 		); err != nil {
 			return nil, err
@@ -45,19 +46,30 @@ func (q *Queries) AllActiveSessions(ctx context.Context, db DBTX, userID int64) 
 }
 
 const createUserSession = `-- name: CreateUserSession :one
-INSERT INTO shield_user_sessions (user_id, expires_at, is_mfa_required)
-VALUES ($1, $2, $3)
+INSERT INTO shield_user_sessions (
+  user_id,
+  expires_at,
+  is_mfa_required,
+  impersonated_by
+)
+VALUES ($1, $2, $3, $4)
 RETURNING id
 `
 
 type CreateUserSessionParams struct {
-	UserID        int64
-	ExpiresAt     time.Time
-	IsMfaRequired bool
+	UserID         int64
+	ExpiresAt      time.Time
+	IsMfaRequired  bool
+	ImpersonatedBy *int64
 }
 
 func (q *Queries) CreateUserSession(ctx context.Context, db DBTX, arg CreateUserSessionParams) (int64, error) {
-	row := db.QueryRow(ctx, createUserSession, arg.UserID, arg.ExpiresAt, arg.IsMfaRequired)
+	row := db.QueryRow(ctx, createUserSession,
+		arg.UserID,
+		arg.ExpiresAt,
+		arg.IsMfaRequired,
+		arg.ImpersonatedBy,
+	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
@@ -146,7 +158,7 @@ func (q *Queries) ExpireSomeSessionsByUserID(ctx context.Context, db DBTX, arg E
 }
 
 const findActiveSessionByID = `-- name: FindActiveSessionByID :one
-SELECT id, created_at, updated_at, expires_at, user_id, evicted_by, is_mfa_required
+SELECT id, created_at, updated_at, expires_at, user_id, evicted_by, impersonated_by, is_mfa_required
 FROM shield_user_sessions
 WHERE id = $1 AND expires_at > NOW()
 LIMIT 1
@@ -162,6 +174,7 @@ func (q *Queries) FindActiveSessionByID(ctx context.Context, db DBTX, id int64) 
 		&i.ExpiresAt,
 		&i.UserID,
 		&i.EvictedBy,
+		&i.ImpersonatedBy,
 		&i.IsMfaRequired,
 	)
 	return i, err

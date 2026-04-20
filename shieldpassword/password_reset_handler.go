@@ -220,6 +220,9 @@ func (h *PasswordResetHandler[_]) HandlePasswordResetConfirm(
 	}
 
 	// Once password is changed, we need to expire all sessions for this user.
+	//
+	// TODO: we have to receive session manager as a parameter, since
+	// there might be an external implementation of the session provider.
 	if _, err := dbsqlc.New().
 		ExpireAllSessionsByUserID(ctx, tx, dbsqlc.ExpireAllSessionsByUserIDParams{
 			UserID:    user.ID,

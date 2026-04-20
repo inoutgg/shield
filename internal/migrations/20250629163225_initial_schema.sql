@@ -111,10 +111,12 @@ CREATE UNLOGGED TABLE IF NOT EXISTS shield_user_sessions (
   user_id VARCHAR(64) NOT NULL,
   evicted_by VARCHAR(64) NULL,
   is_mfa_required BOOLEAN NOT NULL DEFAULT FALSE,
+  impersonated_by VARCHAR(64) NULL,
   PRIMARY KEY (user_id, id),
   FOREIGN KEY (user_id) REFERENCES shield_users (id)
     ON DELETE CASCADE,
   FOREIGN KEY (evicted_by) REFERENCES shield_users (id),
+  FOREIGN KEY (impersonated_by) REFERENCES shield_users (id),
   CHECK (expires_at > CURRENT_TIMESTAMP),
   CHECK (expires_at > created_at)
 );
@@ -316,31 +318,3 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
----- create above / drop below ----
-
-DROP FUNCTION IF EXISTS shield_fn_autoupdate_updated_at();
-
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_workspace_membership_invitations ON shield_workspace_membership_invitations;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_workspace_team_members ON shield_workspace_team_members;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_workspace_teams ON shield_workspace_teams;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_workspaces ON shield_workspaces;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_user_mfas ON shield_user_mfas;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_recovery_codes ON shield_recovery_codes;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_user_sessions ON shield_user_sessions;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_password_reset_tokens ON shield_password_reset_tokens;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_user_credentials ON shield_user_credentials;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_user_email_verification_tokens ON shield_user_email_verification_tokens;
-DROP TRIGGER IF EXISTS shield_trigger_autoupdate_updated_at_shield_users ON shield_users;
-
-DROP TABLE IF EXISTS shield_workspace_membership_invitations;
-DROP TABLE IF EXISTS shield_workspace_team_members;
-DROP TABLE IF EXISTS shield_workspace_teams;
-DROP TABLE IF EXISTS shield_workspaces;
-DROP TABLE IF EXISTS shield_user_mfas;
-DROP TABLE IF EXISTS shield_recovery_codes;
-DROP TABLE IF EXISTS shield_user_sessions;
-DROP TABLE IF EXISTS shield_password_reset_tokens;
-DROP TABLE IF EXISTS shield_user_credentials;
-DROP TABLE IF EXISTS shield_user_email_verification_tokens;
-DROP TABLE IF EXISTS shield_users;

@@ -66,13 +66,14 @@ type ShieldUserMfa struct {
 }
 
 type ShieldUserSession struct {
-	ID            int64
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	ExpiresAt     time.Time
-	UserID        int64
-	EvictedBy     *int64
-	IsMfaRequired bool
+	ID             int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	ExpiresAt      time.Time
+	UserID         int64
+	EvictedBy      *int64
+	ImpersonatedBy *int64
+	IsMfaRequired  bool
 }
 
 type ShieldWorkspace struct {

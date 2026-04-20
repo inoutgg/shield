@@ -38,6 +38,7 @@ func (c *PasswordConfig[U]) defaults() {
 }
 
 func (c *PasswordConfig[U]) assert() {
+	debug.Assert(c.PasswordChecker != nil, "PasswordChecker must be set")
 	debug.Assert(c.PasswordHasher != nil, "PasswordHasher must be set")
 }
 
@@ -133,6 +134,13 @@ func (h *PasswordHandler[_, S]) HandleChangeUserPassword(
 		)
 	}
 
+	if err := h.config.PasswordChecker.Check(ctx, newPassword); err != nil {
+		return fmt.Errorf(
+			"shieldpassword: failed to check password: %w",
+			err,
+		)
+	}
+
 	// Make sure that the password hashing is performed outside of the transaction
 	// as it is an expensive operation.
 	passwordHash, err := h.config.PasswordHasher.Hash(newPassword)
@@ -194,8 +202,7 @@ func (h *PasswordHandler[_, S]) HandleChangeUserPassword(
 		}
 	}
 
-	err = h.authenticator.ExpireSessions(ctx, tx)
-	if err != nil {
+	if err = h.authenticator.ExpireSessions(ctx, tx); err != nil {
 		if !errors.Is(err, errors.ErrUnsupported) {
 			return fmt.Errorf(
 				"shieldpassword: failed to expire sessions: %w",
@@ -223,6 +230,13 @@ func (h *PasswordHandler[U, S]) HandleUserRegistration(
 	email, password string,
 ) (shielduser.User[U], error) {
 	var user shielduser.User[U]
+
+	if err := h.config.PasswordChecker.Check(ctx, password); err != nil {
+		return user, fmt.Errorf(
+			"shieldpassword: failed to check password: %w",
+			err,
+		)
+	}
 
 	// Make sure that the password hashing is performed outside of the transaction
 	// as it is an expensive operation.
