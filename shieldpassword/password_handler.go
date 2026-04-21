@@ -228,11 +228,11 @@ func (h *PasswordHandler[_, S]) HandleChangeUserPassword(
 func (h *PasswordHandler[U, S]) HandleUserRegistration(
 	ctx context.Context,
 	email, password string,
-) (shielduser.User[U], error) {
-	var user shielduser.User[U]
+) (*shielduser.User[U], error) {
+	user := &shielduser.User[U]{}
 
 	if err := h.config.PasswordChecker.Check(ctx, password); err != nil {
-		return user, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldpassword: failed to check password: %w",
 			err,
 		)
@@ -242,7 +242,7 @@ func (h *PasswordHandler[U, S]) HandleUserRegistration(
 	// as it is an expensive operation.
 	passwordHash, err := h.config.PasswordHasher.Hash(password)
 	if err != nil {
-		return user, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldpassword: failed to hash password: %w",
 			err,
 		)
@@ -250,7 +250,7 @@ func (h *PasswordHandler[U, S]) HandleUserRegistration(
 
 	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
-		return user, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldpassword: failed to begin transaction: %w",
 			err,
 		)
@@ -260,7 +260,7 @@ func (h *PasswordHandler[U, S]) HandleUserRegistration(
 
 	userID, err := h.handleUserRegistrationTx(ctx, email, passwordHash, tx)
 	if err != nil {
-		return user, err
+		return nil, err
 	}
 
 	// An entry point for hooking the user registration process.
@@ -275,7 +275,7 @@ func (h *PasswordHandler[U, S]) HandleUserRegistration(
 			tx,
 		)
 		if err != nil {
-			return user, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"shieldpassword: failed to hook user registration: %w",
 				err,
 			)
@@ -283,7 +283,7 @@ func (h *PasswordHandler[U, S]) HandleUserRegistration(
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return user, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldpassword: failed to register a user: %w",
 			err,
 		)
@@ -331,12 +331,12 @@ func (h *PasswordHandler[U, _]) handleUserRegistrationTx(
 func (h *PasswordHandler[U, S]) HandleUserLogin(
 	ctx context.Context,
 	email, password string,
-) (shielduser.User[U], error) {
-	var user shielduser.User[U]
+) (*shielduser.User[U], error) {
+	user := &shielduser.User[U]{}
 
 	tx, err := h.dbtx.Begin(ctx)
 	if err != nil {
-		return user, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldpassword: failed to begin transaction: %w",
 			err,
 		)
@@ -351,10 +351,10 @@ func (h *PasswordHandler[U, S]) HandleUserLogin(
 	)
 	if err != nil {
 		if dbsql.IsNotFoundError(err) {
-			return user, shield.ErrUserNotFound
+			return nil, shield.ErrUserNotFound
 		}
 
-		return user, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldpassword: failed to find user: %w",
 			err,
 		)
@@ -363,7 +363,7 @@ func (h *PasswordHandler[U, S]) HandleUserLogin(
 	// Treat the empty password as a non-existing user/credential.
 	if dbUser.PasswordHash == "" {
 		d("empty password in db")
-		return user, shield.ErrUserNotFound
+		return nil, shield.ErrUserNotFound
 	}
 
 	// An entry point for hooking the user login process.
@@ -374,7 +374,7 @@ func (h *PasswordHandler[U, S]) HandleUserLogin(
 
 		payload, err = h.config.Hooker.OnUserLogin(ctx, user.ID, tx)
 		if err != nil {
-			return user, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"shieldpassword: failed to hook user login: %w",
 				err,
 			)
@@ -383,7 +383,7 @@ func (h *PasswordHandler[U, S]) HandleUserLogin(
 
 	// Make sure that the password hashing is performed outside of the transaction.
 	if err := tx.Commit(ctx); err != nil {
-		return user, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldpassword: failed to login a user: %w",
 			err,
 		)
@@ -391,7 +391,7 @@ func (h *PasswordHandler[U, S]) HandleUserLogin(
 
 	ok, err := h.config.PasswordHasher.Verify(dbUser.PasswordHash, password)
 	if err != nil {
-		return user, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldpassword: failed to verify password: %w",
 			err,
 		)
@@ -399,7 +399,7 @@ func (h *PasswordHandler[U, S]) HandleUserLogin(
 
 	if !ok {
 		d("password mismatch")
-		return user, ErrPasswordIncorrect
+		return nil, ErrPasswordIncorrect
 	}
 
 	user.ID = dbUser.ID

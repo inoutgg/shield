@@ -18,16 +18,16 @@ type User[T any] struct {
 }
 
 // UserByID retrieves a user by their ID.
-func UserByID(ctx context.Context, dbtx dbsqlc.DBTX, id int64) (User[any], error) {
-	var user User[any]
+func UserByID(ctx context.Context, dbtx dbsqlc.DBTX, id int64) (*User[any], error) {
+	user := &User[any]{}
 
 	dbUser, err := dbsqlc.New().FindUserByID(ctx, dbtx, id)
 	if err != nil {
 		if dbsql.IsNotFoundError(err) {
-			return user, shield.ErrUserNotFound
+			return nil, shield.ErrUserNotFound
 		}
 
-		return user, fmt.Errorf("shielduser: failed to find user by id: %w", err)
+		return nil, fmt.Errorf("shielduser: failed to find user by id: %w", err)
 	}
 
 	user.ID = dbUser.ID
@@ -38,16 +38,16 @@ func UserByID(ctx context.Context, dbtx dbsqlc.DBTX, id int64) (User[any], error
 }
 
 // UserByEmail retrieves a user by their email.
-func UserByEmail(ctx context.Context, dbtx dbsqlc.DBTX, email string) (User[any], error) {
-	var user User[any]
+func UserByEmail(ctx context.Context, dbtx dbsqlc.DBTX, email string) (*User[any], error) {
+	user := &User[any]{}
 
 	dbUser, err := dbsqlc.New().FindUserByEmail(ctx, dbtx, email)
 	if err != nil {
 		if dbsql.IsNotFoundError(err) {
-			return user, shield.ErrUserNotFound
+			return nil, shield.ErrUserNotFound
 		}
 
-		return user, fmt.Errorf("shielduser: failed to find user by email: %w", err)
+		return nil, fmt.Errorf("shielduser: failed to find user by email: %w", err)
 	}
 
 	user.ID = dbUser.ID

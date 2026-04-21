@@ -42,10 +42,10 @@ func (m *MockImpersonator[U, S]) EXPECT() *MockImpersonatorMockRecorder[U, S] {
 }
 
 // Impersonate mocks base method.
-func (m *MockImpersonator[U, S]) Impersonate(arg0 http.ResponseWriter, arg1 *http.Request, arg2 *shielduser.Session[S], arg3 *shielduser.User[U]) (shielduser.Session[S], error) {
+func (m *MockImpersonator[U, S]) Impersonate(arg0 http.ResponseWriter, arg1 *http.Request, arg2 *shielduser.Session[S], arg3 *shielduser.User[U]) (*shielduser.Session[S], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Impersonate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(shielduser.Session[S])
+	ret0, _ := ret[0].(*shielduser.Session[S])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -63,19 +63,19 @@ type MockImpersonatorImpersonateCall[U any, S any] struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockImpersonatorImpersonateCall[U, S]) Return(arg0 shielduser.Session[S], arg1 error) *MockImpersonatorImpersonateCall[U, S] {
+func (c *MockImpersonatorImpersonateCall[U, S]) Return(arg0 *shielduser.Session[S], arg1 error) *MockImpersonatorImpersonateCall[U, S] {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockImpersonatorImpersonateCall[U, S]) Do(f func(http.ResponseWriter, *http.Request, *shielduser.Session[S], *shielduser.User[U]) (shielduser.Session[S], error)) *MockImpersonatorImpersonateCall[U, S] {
+func (c *MockImpersonatorImpersonateCall[U, S]) Do(f func(http.ResponseWriter, *http.Request, *shielduser.Session[S], *shielduser.User[U]) (*shielduser.Session[S], error)) *MockImpersonatorImpersonateCall[U, S] {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockImpersonatorImpersonateCall[U, S]) DoAndReturn(f func(http.ResponseWriter, *http.Request, *shielduser.Session[S], *shielduser.User[U]) (shielduser.Session[S], error)) *MockImpersonatorImpersonateCall[U, S] {
+func (c *MockImpersonatorImpersonateCall[U, S]) DoAndReturn(f func(http.ResponseWriter, *http.Request, *shielduser.Session[S], *shielduser.User[U]) (*shielduser.Session[S], error)) *MockImpersonatorImpersonateCall[U, S] {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -71,10 +71,16 @@ func Middleware[U, S any](
 					return
 				}
 
+				if errors.Is(err, shield.ErrUnauthenticatedUser) {
+					next.ServeHTTP(w, r)
+
+					return
+				}
+
 				next.ServeHTTP(
 					w,
 					r.WithContext(
-						context.WithValue(r.Context(), kCtxKey, &sess),
+						context.WithValue(r.Context(), kCtxKey, sess),
 					),
 				)
 			},
@@ -142,7 +148,7 @@ func FromRequest[S any](r *http.Request) (*Session[S], error) {
 // Make sure to use the Middleware before calling this function.
 func FromContext[S any](ctx context.Context) (*Session[S], error) {
 	sess, ok := ctx.Value(kCtxKey).(*Session[S])
-	if ok {
+	if ok && sess != nil {
 		if sess.IsMFARequired {
 			return sess, shield.ErrMFARequired
 		}

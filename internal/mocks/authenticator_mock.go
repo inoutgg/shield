@@ -44,10 +44,10 @@ func (m *MockAuthenticator[U, S]) EXPECT() *MockAuthenticatorMockRecorder[U, S] 
 }
 
 // Authenticate mocks base method.
-func (m *MockAuthenticator[U, S]) Authenticate(arg0 http.ResponseWriter, arg1 *http.Request) (shielduser.Session[S], error) {
+func (m *MockAuthenticator[U, S]) Authenticate(arg0 http.ResponseWriter, arg1 *http.Request) (*shielduser.Session[S], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Authenticate", arg0, arg1)
-	ret0, _ := ret[0].(shielduser.Session[S])
+	ret0, _ := ret[0].(*shielduser.Session[S])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -65,19 +65,19 @@ type MockAuthenticatorAuthenticateCall[U any, S any] struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockAuthenticatorAuthenticateCall[U, S]) Return(arg0 shielduser.Session[S], arg1 error) *MockAuthenticatorAuthenticateCall[U, S] {
+func (c *MockAuthenticatorAuthenticateCall[U, S]) Return(arg0 *shielduser.Session[S], arg1 error) *MockAuthenticatorAuthenticateCall[U, S] {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockAuthenticatorAuthenticateCall[U, S]) Do(f func(http.ResponseWriter, *http.Request) (shielduser.Session[S], error)) *MockAuthenticatorAuthenticateCall[U, S] {
+func (c *MockAuthenticatorAuthenticateCall[U, S]) Do(f func(http.ResponseWriter, *http.Request) (*shielduser.Session[S], error)) *MockAuthenticatorAuthenticateCall[U, S] {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockAuthenticatorAuthenticateCall[U, S]) DoAndReturn(f func(http.ResponseWriter, *http.Request) (shielduser.Session[S], error)) *MockAuthenticatorAuthenticateCall[U, S] {
+func (c *MockAuthenticatorAuthenticateCall[U, S]) DoAndReturn(f func(http.ResponseWriter, *http.Request) (*shielduser.Session[S], error)) *MockAuthenticatorAuthenticateCall[U, S] {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -121,10 +121,10 @@ func (c *MockAuthenticatorExpireSessionsCall[U, S]) DoAndReturn(f func(context.C
 }
 
 // Issue mocks base method.
-func (m *MockAuthenticator[U, S]) Issue(arg0 http.ResponseWriter, arg1 *http.Request, arg2 shielduser.User[U]) (shielduser.Session[S], error) {
+func (m *MockAuthenticator[U, S]) Issue(arg0 http.ResponseWriter, arg1 *http.Request, arg2 *shielduser.User[U]) (*shielduser.Session[S], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Issue", arg0, arg1, arg2)
-	ret0, _ := ret[0].(shielduser.Session[S])
+	ret0, _ := ret[0].(*shielduser.Session[S])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -142,19 +142,19 @@ type MockAuthenticatorIssueCall[U any, S any] struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockAuthenticatorIssueCall[U, S]) Return(arg0 shielduser.Session[S], arg1 error) *MockAuthenticatorIssueCall[U, S] {
+func (c *MockAuthenticatorIssueCall[U, S]) Return(arg0 *shielduser.Session[S], arg1 error) *MockAuthenticatorIssueCall[U, S] {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockAuthenticatorIssueCall[U, S]) Do(f func(http.ResponseWriter, *http.Request, shielduser.User[U]) (shielduser.Session[S], error)) *MockAuthenticatorIssueCall[U, S] {
+func (c *MockAuthenticatorIssueCall[U, S]) Do(f func(http.ResponseWriter, *http.Request, *shielduser.User[U]) (*shielduser.Session[S], error)) *MockAuthenticatorIssueCall[U, S] {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockAuthenticatorIssueCall[U, S]) DoAndReturn(f func(http.ResponseWriter, *http.Request, shielduser.User[U]) (shielduser.Session[S], error)) *MockAuthenticatorIssueCall[U, S] {
+func (c *MockAuthenticatorIssueCall[U, S]) DoAndReturn(f func(http.ResponseWriter, *http.Request, *shielduser.User[U]) (*shielduser.Session[S], error)) *MockAuthenticatorIssueCall[U, S] {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

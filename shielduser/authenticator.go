@@ -29,7 +29,7 @@ type Authenticator[U, S any] interface {
 	// not fully authenticated, i.e., when user is required MFA authentication.
 	//
 	// If MFA is required, the session is returned along with a shield.ErrMFARequired error.
-	Issue(http.ResponseWriter, *http.Request, User[U]) (Session[S], error)
+	Issue(http.ResponseWriter, *http.Request, *User[U]) (*Session[S], error)
 
 	// Authenticate authenticates the user.
 	//
@@ -37,7 +37,7 @@ type Authenticator[U, S any] interface {
 	// a shield.ErrUnauthenticatedUser error.
 	//
 	// If MFA is required, the session is returned along with a shield.ErrMFARequired error.
-	Authenticate(http.ResponseWriter, *http.Request) (Session[S], error)
+	Authenticate(http.ResponseWriter, *http.Request) (*Session[S], error)
 
 	// ExpireSessions closes all sessions, but one assigned to a the context.
 	//

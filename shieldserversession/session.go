@@ -50,17 +50,17 @@ type sessionStrategy[U, S any] struct {
 type Hooker[U, S any] interface {
 	OnSessionIssue(
 		context.Context,
-		shielduser.User[U],
-		shielduser.Session[S],
+		*shielduser.User[U],
+		*shielduser.Session[S],
 		pgx.Tx,
-	) (shielduser.Session[S], error)
+	) (*shielduser.Session[S], error)
 
 	// OnSessionAuthenticate allows to hook into the session authentication process.
 	OnSessionAuthenticate(
 		context.Context,
-		shielduser.Session[S],
+		*shielduser.Session[S],
 		pgx.Tx,
-	) (shielduser.Session[S], error)
+	) (*shielduser.Session[S], error)
 
 	// OnLogout allows to hook into the session logout process.
 	OnLogout(
@@ -145,11 +145,13 @@ func New[U, S any](
 func (s *sessionStrategy[U, S]) Issue(
 	w http.ResponseWriter,
 	r *http.Request,
-	user shielduser.User[U],
-) (shielduser.Session[S], error) {
+	user *shielduser.User[U],
+) (*shielduser.Session[S], error) {
 	ctx := r.Context()
 
-	var sess shielduser.Session[S]
+	if user == nil {
+		return nil, fmt.Errorf("shieldserversession: user is required")
+	}
 
 	isMFARequired := true
 
@@ -158,7 +160,7 @@ func (s *sessionStrategy[U, S]) Issue(
 		if errors.Is(err, shieldmfa.ErrNoMFAMethods) {
 			isMFARequired = false
 		} else {
-			return sess, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"shieldserversession: failed to get MFA: %w",
 				err,
 			)
@@ -169,7 +171,7 @@ func (s *sessionStrategy[U, S]) Issue(
 
 	tx, err := s.dbtx.Begin(ctx)
 	if err != nil {
-		return sess, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldserversession: failed to begin transaction: %w",
 			err,
 		)
@@ -177,7 +179,7 @@ func (s *sessionStrategy[U, S]) Issue(
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	sess, err = s.issueSessionTx(ctx, user, expiresAt, isMFARequired, nil, tx)
+	sess, err := s.issueSessionTx(ctx, user, expiresAt, isMFARequired, nil, tx)
 	if err != nil {
 		return sess, err
 	}
@@ -209,32 +211,30 @@ func (s *sessionStrategy[U, S]) Impersonate(
 	r *http.Request,
 	actorSession *shielduser.Session[S],
 	targetUser *shielduser.User[U],
-) (shielduser.Session[S], error) {
+) (*shielduser.Session[S], error) {
 	ctx := r.Context()
 
-	var sess shielduser.Session[S]
-
 	if actorSession == nil {
-		return sess, fmt.Errorf("shieldserversession: actor session is required")
+		return nil, fmt.Errorf("shieldserversession: actor session is required")
 	}
 
 	if targetUser == nil {
-		return sess, fmt.Errorf("shieldserversession: target user is required")
+		return nil, fmt.Errorf("shieldserversession: target user is required")
 	}
 
 	if actorSession.IsMFARequired {
-		return sess, shield.ErrMFARequired
+		return nil, shield.ErrMFARequired
 	}
 
 	if actorSession.ImpersonatedBy != nil {
-		return sess, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldserversession: nested impersonation is not supported",
 		)
 	}
 
 	tx, err := s.dbtx.Begin(ctx)
 	if err != nil {
-		return sess, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldserversession: failed to begin transaction: %w",
 			err,
 		)
@@ -245,9 +245,9 @@ func (s *sessionStrategy[U, S]) Impersonate(
 	expiresAt := time.Now().Add(s.config.ImpersonationExpiresIn)
 	impersonatedBy := actorSession.UserID
 
-	sess, err = s.issueSessionTx(
+	sess, err := s.issueSessionTx(
 		ctx,
-		*targetUser,
+		targetUser,
 		expiresAt,
 		false,
 		&impersonatedBy,
@@ -277,13 +277,13 @@ func (s *sessionStrategy[U, S]) Impersonate(
 
 func (s *sessionStrategy[U, S]) issueSessionTx(
 	ctx context.Context,
-	user shielduser.User[U],
+	user *shielduser.User[U],
 	expiresAt time.Time,
 	isMFARequired bool,
 	impersonatedBy *int64,
 	tx pgx.Tx,
-) (shielduser.Session[S], error) {
-	var sess shielduser.Session[S]
+) (*shielduser.Session[S], error) {
+	sess := &shielduser.Session[S]{}
 
 	sessionID, err := dbsqlc.New().CreateUserSession(
 		ctx,
@@ -296,7 +296,7 @@ func (s *sessionStrategy[U, S]) issueSessionTx(
 		},
 	)
 	if err != nil {
-		return sess, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldserversession: failed to create session: %w",
 			err,
 		)
@@ -331,31 +331,31 @@ func (s *sessionStrategy[U, S]) issueSessionTx(
 func (s *sessionStrategy[U, S]) Authenticate(
 	w http.ResponseWriter,
 	r *http.Request,
-) (shielduser.Session[S], error) {
+) (*shielduser.Session[S], error) {
 	ctx := r.Context()
-
-	var sess shielduser.Session[S]
 
 	sessionIDStr := httpcookie.Get(r, s.config.CookieName)
 	if sessionIDStr == "" {
-		return sess, shield.ErrUnauthenticatedUser
+		return nil, shield.ErrUnauthenticatedUser
 	}
 
 	sessionID, err := strconv.ParseInt(sessionIDStr, 10, 64)
 	if err != nil {
 		httpcookie.Delete(w, r, s.config.CookieName)
-		return sess, shield.ErrUnauthenticatedUser
+		return nil, shield.ErrUnauthenticatedUser
 	}
 
 	tx, err := s.dbtx.Begin(ctx)
 	if err != nil {
-		return sess, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldserversession: failed to begin transaction: %w",
 			err,
 		)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	sess := &shielduser.Session[S]{}
 
 	dbSess, err := dbsqlc.New().FindActiveSessionByID(ctx, tx, sessionID)
 	if err != nil {
@@ -368,16 +368,22 @@ func (s *sessionStrategy[U, S]) Authenticate(
 
 			httpcookie.Delete(w, r, s.config.CookieName)
 
-			return sess, shield.ErrUnauthenticatedUser
+			return nil, shield.ErrUnauthenticatedUser
 		}
 
-		return sess, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shieldserversession: failed to find user session: %w",
 			err,
 		)
 	}
 
 	if dbSess.IsMfaRequired {
+		sess.ID = dbSess.ID
+		sess.ExpiresAt = dbSess.ExpiresAt
+		sess.UserID = dbSess.UserID
+		sess.ImpersonatedBy = dbSess.ImpersonatedBy
+		sess.IsMFARequired = true
+
 		return sess, shield.ErrMFARequired
 	}
 

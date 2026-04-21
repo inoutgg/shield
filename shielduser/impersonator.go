@@ -15,7 +15,7 @@ import (
 //
 //go:generate mockgen -destination=../internal/mocks/impersonator_mock.go -package=mocks -typed . Impersonator
 type Impersonator[U, S any] interface {
-	Impersonate(http.ResponseWriter, *http.Request, *Session[S], *User[U]) (Session[S], error)
+	Impersonate(http.ResponseWriter, *http.Request, *Session[S], *User[U]) (*Session[S], error)
 }
 
 // IsImpersonated returns true if the current authenticated session is impersonated.
@@ -48,18 +48,16 @@ func NewImpersonationHandler[U, S any](
 //
 // The request is expected to already have an authenticated actor session in its
 // context, for example via shielduser.Middleware.
-func (h *ImpersonationHandler[U, S]) HandleImpersonate(w http.ResponseWriter, r *http.Request, targetUser *User[U]) (Session[S], error) {
-	var sess Session[S]
-
+func (h *ImpersonationHandler[U, S]) HandleImpersonate(w http.ResponseWriter, r *http.Request, targetUser *User[U]) (*Session[S], error) {
 	actorSession, err := FromRequest[S](r)
 	if err != nil {
-		return sess, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"shielduser: failed to retrieve actor session from request: %w",
 			err,
 		)
 	}
 
-	sess, err = h.impersonator.Impersonate(w, r, actorSession, targetUser)
+	sess, err := h.impersonator.Impersonate(w, r, actorSession, targetUser)
 	if err != nil {
 		return sess, fmt.Errorf(
 			"shielduser: failed to impersonate user: %w",
