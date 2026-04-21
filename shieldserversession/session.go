@@ -328,6 +328,16 @@ func (s *sessionStrategy[U, S]) issueSessionTx(
 	return sess, nil
 }
 
+func sessionFromDB[S any](dbSess dbsqlc.ShieldUserSession) *shielduser.Session[S] {
+	return &shielduser.Session[S]{
+		ID:             dbSess.ID,
+		ExpiresAt:      dbSess.ExpiresAt,
+		UserID:         dbSess.UserID,
+		ImpersonatedBy: dbSess.ImpersonatedBy,
+		IsMFARequired:  dbSess.IsMfaRequired,
+	}
+}
+
 func (s *sessionStrategy[U, S]) Authenticate(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -355,8 +365,6 @@ func (s *sessionStrategy[U, S]) Authenticate(
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	sess := &shielduser.Session[S]{}
-
 	dbSess, err := dbsqlc.New().FindActiveSessionByID(ctx, tx, sessionID)
 	if err != nil {
 		if dbsql.IsNotFoundError(err) {
@@ -377,20 +385,11 @@ func (s *sessionStrategy[U, S]) Authenticate(
 		)
 	}
 
-	if dbSess.IsMfaRequired {
-		sess.ID = dbSess.ID
-		sess.ExpiresAt = dbSess.ExpiresAt
-		sess.UserID = dbSess.UserID
-		sess.ImpersonatedBy = dbSess.ImpersonatedBy
-		sess.IsMFARequired = true
+	sess := sessionFromDB[S](dbSess)
 
+	if sess.IsMFARequired {
 		return sess, shield.ErrMFARequired
 	}
-
-	sess.ID = dbSess.ID
-	sess.ExpiresAt = dbSess.ExpiresAt
-	sess.UserID = dbSess.UserID
-	sess.ImpersonatedBy = dbSess.ImpersonatedBy
 
 	if s.config.Hooker != nil {
 		sess, err = s.config.Hooker.OnSessionAuthenticate(ctx, sess, tx)
