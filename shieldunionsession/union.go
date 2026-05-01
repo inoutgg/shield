@@ -34,7 +34,6 @@ func (u unionStrategy[U, S]) Authenticate(
 	w http.ResponseWriter,
 	r *http.Request,
 ) (*shielduser.Session[S], error) {
-
 	errs := make([]error, 0)
 
 	for _, authenticator := range u {

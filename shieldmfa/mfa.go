@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"go.inout.gg/shield/internal/dbsqlc"
 	"go.inout.gg/shield/internal/sliceutil"
 )
 
-var ErrNoMFAMethods = errors.New("no multi-factor authentication is enabled")
+var _ error = (*UserMFARequiredError)(nil)
 
-var _ error = UserMFARequiredError{} //nolint:exhaustruct
+var ErrNoMFAMethods = errors.New("no multi-factor authentication is enabled")
 
 // UserMFARequiredError represents an error that occurs
 // when a user is required to perform multi-factor authentication.
@@ -60,7 +61,7 @@ func UserMFA(ctx context.Context, dbtx dbsqlc.DBTX, userID int64) ([]string, err
 		return nil, fmt.Errorf("shieldmfa: failed to get user MFAs: %w", err)
 	}
 
-	if len(mfas) == 0 {
+	if errors.Is(err, pgx.ErrNoRows) || len(mfas) == 0 {
 		return nil, ErrNoMFAMethods
 	}
 

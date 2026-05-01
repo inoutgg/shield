@@ -31,8 +31,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - uses: DeterminateSystems/flake-checker-action@main
+      - name: Install devenv
+        shell: bash
+        run: nix profile add nixpkgs#devenv
       - name: Test
         run: |
-          nix develop --command go test -count=1 -race -v ./...
-          nix develop --command golangci-lint run ./...
+          devenv tasks run shield:lint
+          devenv tasks run shield:test-all
